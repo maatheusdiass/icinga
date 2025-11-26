@@ -1,0 +1,50 @@
+---
+### Common handlers
+- name: Deploy director configuration
+  ansible.builtin.command: icingacli director config deploy
+  delegate_to: "{{ icinga_master }}"
+  remote_user: "{{ icinga_master_ssh_user }}"
+  register: deploy_director_configuration
+  changed_when: deploy_direcotr_configuration.rc != 0
+  run_once: true
+  when: icinga2_director_deploy|bool
+
+### Linux handlers
+- name: Restart Linux icinga2 service
+  ansible.builtin.systemd:
+    name: icinga2
+    state: restarted
+  when: icinga2_reconfigured_ok|bool
+
+- name: Stop Linux icinga2 service
+  ansible.builtin.systemd:
+    name: icinga2
+    state: stopped
+
+- name: Remove Linux temporary directory
+  ansible.builtin.file:
+    path: "{{ setup_tmp.path }}"
+    state: absent
+  when: not icinga_client_keep_tempdir|bool
+  check_mode: false
+
+### Windows handlers
+- name: Restart Win32NT icinga2 service
+  ansible.windows.win_service:
+    name: icinga2
+    state: restarted
+  when: icinga2_reconfigured_ok|bool
+
+- name: Stop Win32NT icinga2 service
+  listen: stop icinga2 service
+  ansible.windows.win_service:
+    name: icinga2
+    state: stopped
+
+- name: Remove Win32NT temporary directory
+  listen: remove temporary directory
+  ansible.windows.win_file:
+    path: "{{ setup_tmp.path }}"
+    state: absent
+  when: not icinga_client_keep_tempdir|bool
+  check_mode: true

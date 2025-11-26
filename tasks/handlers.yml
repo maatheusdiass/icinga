@@ -1,0 +1,31 @@
+---
+- name: Run Handlers that were saved
+  tags: always
+  block:
+    ### Linux handlers
+    - name: Restart Linux icinga2 service
+      ansible.builtin.systemd:
+        name: icinga2
+        state: restarted
+      when: icinga2_reconfigured_ok|bool and restart_linux_icinga2_service is defined and restart_linux_icinga2_service[inventory_hostname]|default(false)|bool
+
+    - name: Remove Linux temporary directory
+      ansible.builtin.file:
+        path: "{{ setup_tmp.path }}"
+        state: absent
+      when: not icinga_client_keep_tempdir|bool and remove_linux_temporary_directory is defined and remove_linux_temporary_directory[inventory_hostname]|default(false)|bool
+      check_mode: false
+
+    ### Windows handlers
+    - name: Restart Win32NT icinga2 service
+      ansible.windows.win_service:
+        name: icinga2
+        state: restarted
+      when: icinga2_reconfigured_ok|bool and restart_Win32NT_icinga2_service is defined and restart_Win32NT_icinga2_service[inventory_hostname]|default(false)|bool
+
+    - name: Remove Win32NT temporary directory
+      ansible.windows.win_file:
+        path: "{{ setup_tmp.path }}"
+        state: absent
+      when: not icinga_client_keep_tempdir|bool and remove_Win32NT_temporary_Directory is defined and remove_Win32NT_temporary_Directory[inventory_hostname]|default(false)|bool
+      check_mode: true

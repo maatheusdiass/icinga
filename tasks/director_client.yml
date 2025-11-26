@@ -1,0 +1,194 @@
+---
+- name: Set host in director
+  tags: always
+  throttle: 1
+  when: create_host_in_icinga_director_wf[host_name]|bool
+  block:
+    - name: Include OS-specific variables
+      ansible.builtin.include_vars: "{{ ansible_os_family_wf[host_name] }}.yml"
+
+    - name: Add new host director configuration to {{ icinga_master }} via cli
+      when: director_self_service_apikey is not defined
+      tags: always
+      block:
+        - name: Check if zone already exists
+          ansible.builtin.command: /usr/bin/icingacli director zone exists {{ icinga_zone_wf[host_name] }}
+          register: icinga_director_check_zone_exists
+          changed_when: false
+          failed_when: icinga_director_check_zone_exists.rc < -1 or icinga_director_check_zone_exists.rc > 1
+          check_mode: false
+
+        - name: Fail if the icinga zone does not exist
+          ansible.builtin.fail:
+            msg: zone {{ icinga_zone_wf[host_name] }} does not exist
+          when: icinga_director_check_zone_exists.rc != 0
+
+        - name: Director check if host exists
+          ansible.builtin.command: /usr/bin/icingacli director host exists {{ icinga_client_hostname_wf[host_name] }}
+          register: icinga_director_check_host_exists
+          changed_when: false
+          failed_when: icinga_director_check_host_exists.rc < -1 or icinga_director_check_host_exists.rc > 1
+          check_mode: false
+
+        - name: Director create host
+          when: icinga_director_check_host_exists.rc != 0
+          block:
+            - name: Prepare create host command
+              ansible.builtin.set_fact:
+                create_host_cmd:
+                  - /usr/bin/icingacli
+                  - director
+                  - host
+                  - create
+                  - "{{ icinga_client_hostname_wf[host_name] }}"
+                  - --address
+                  - "{{ icinga_client_ip_wf[host_name] }}"
+                  - --zone
+                  - "{{ icinga_zone_wf[host_name] }}"
+
+            - name: Adding templates
+              ansible.builtin.set_fact:
+                create_host_cmd: "{{ create_host_cmd + ['--imports', item] }}"
+              loop: "{{ icinga_client_templates_wf[host_name] }}"
+
+            - name: Adding displayname
+              ansible.builtin.set_fact:
+                create_host_cmd: "{{ create_host_cmd + ['--display_name', icinga_client_displayname_wf[host_name]] }}"
+              when: icinga_client_displayname_wf is defined and icinga_client_displayname_wf[host_name] is defined
+
+            - name: Adding client var
+              ansible.builtin.set_fact:
+                create_host_cmd: "{{ create_host_cmd + ['--vars.client', icinga_client_wf[host_name]] }}"
+              when: icinga_client_wf is defined and icinga_client_wf[host_name] is defined
+
+            - name: Adding snmp_community
+              ansible.builtin.set_fact:
+                create_host_cmd: "{{ create_host_cmd + ['--vars.snmp_community', my_mon_community_wf[host_name]] }}"
+              when: icinga_client_set_snmp_community_wf is defined and icinga_client_set_snmp_community_wf[host_name]|bool
+
+            - name: Director create host
+              ansible.builtin.command:
+                argv: "{{ create_host_cmd }}"
+              register: deploy_director_configuration0
+              changed_when: "'has been created' in deploy_director_configuration0.stdout"
+
+            - name: Fetch host config
+              when: icinga_client_contacts_for_host_wf is defined or icinga_client_contacts_for_services_wf is defined or icinga_client_host_vars_wf is defined or
+                icinga_client_ntp_address_wf is defined or icinga_client_services_vars_wf is defined
+              block:
+                - name: Run icingacli director host show command
+                  ansible.builtin.command:
+                    argv:
+                      - /usr/bin/icingacli
+                      - director
+                      - host
+                      - show
+                      - "{{ icinga_client_hostname_wf[host_name] }}"
+                      - --json
+                  register: out
+                  changed_when: out.rc != -1
+                - name: Transform to json
+                  ansible.builtin.set_fact:
+                    json: "{{ out.stdout | from_json | combine({'fields': omit}) }}"
+                  when: not ansible_check_mode
+
+                - name: Initiate empty json variable
+                  ansible.builtin.set_fact:
+                    json: {}
+                  when: ansible_check_mode
+            - name: Add contacts for host to host config
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(new, recursive=true) }}"
+              vars:
+                new:
+                  vars:
+                    contacts: "{{ lookup('list', icinga_client_contacts_for_host_wf[host_name] | default([]), wantlist=True) | flatten | unique }}"
+              when: icinga_client_contacts_for_host_wf is defined and icinga_client_contacts_for_host_wf[host_name] is defined
+
+            - name: Add contacts for services to host config
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(new, recursive=true) }}"
+              vars:
+                new:
+                  vars:
+                    contacts_for_services: "{{ lookup('list', icinga_client_contacts_for_services_wf[host_name] | default([]), wantlist=True) | flatten | unique }}"
+              when: icinga_client_contacts_for_services_wf is defined and icinga_client_contacts_for_services_wf[host_name] is defined
+
+            - name: Add extra host vars to host config
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(new, recursive=true) }}"
+              vars:
+                new:
+                  vars: "{ '{{ item.key }}': '{{ item.value }}' }"
+              loop: "{{ lookup('dict', icinga_client_host_vars_wf[host_name] | default({}), wantlist=True) }}"
+              when: icinga_client_host_vars_wf is defined and icinga_client_host_vars_wf[host_name] is defined
+
+            - name: Add ntp check configuration to host config
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(ntp_json, recursive=true) }}"
+              vars:
+                ntp_json:
+                  vars:
+                    _override_servicevars: "{ '{{ ntp_service_name }}': { 'ntp_address': '{{ icinga_client_ntp_address_wf[host_name] }}' } }"
+              when: icinga_client_ntp_address_wf is defined and icinga_client_ntp_address_wf[host_name] is defined
+
+            - name: Add mailq_sudo check configuration to host config
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(new, recursive=true) }}"
+              vars:
+                new:
+                  vars:
+                    _override_servicevars:
+                      email mailq:
+                        mailq_sudo: true
+              when: '"linux" in icinga_client_templates_wf[host_name] and ansible_os_family_wf[host_name] == "Debian"'
+
+            - name: Add contact for disk
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(new, recursive=true) }}"
+              vars:
+                new:
+                  vars:
+                    _override_servicevars:
+                      linux disk:
+                        contacts: "{{ icinga_client_contacts_for_host_wf[host_name] }}"
+              when: icinga_client_contacts_for_host_wf is defined and icinga_client_contacts_for_host_wf[host_name] is defined and icinga_client_contacts_for_services_wf
+                is defined and icinga_client_contacts_for_services_wf[host_name] is defined and icinga_client_contacts_for_host_wf is defined and icinga_client_contacts_for_host_wf[host_name]
+                != icinga_client_contacts_for_services_wf[host_name] and  "linux" in icinga_client_templates_wf[host_name]
+
+            - name: Add extra service overridden vars to host config
+              ansible.builtin.set_fact:
+                json: "{{ json | combine(new, recursive=true) }}"
+              vars:
+                new:
+                  vars:
+                    _override_servicevars: "{ '{{ item.key }}': {{ item.value }} }"
+              loop: "{{ lookup('dict', icinga_client_services_vars_wf[host_name] | default({}), wantlist=True) }}"
+              when: icinga_client_services_vars_wf is defined and icinga_client_services_vars_wf[host_name] is defined
+
+            - name: Director set changed host config
+              ansible.builtin.command:
+                argv:
+                  - /usr/bin/icingacli
+                  - director
+                  - host
+                  - set
+                  - "{{ icinga_client_hostname_wf[host_name] }}"
+                  - --json
+                  - "{{ json | to_json }}"
+              register: deploy_director_configuration1
+              changed_when: "'has been modified' in deploy_director_configuration1.stdout"
+
+            - name: Set deploy_director_configuration to persist through workflow
+              ansible.builtin.set_fact:
+                deploy_director_configuration: "{{ deploy_director_configuration | default({}) | combine({host_name: true}) }}"
+              when: deploy_director_configuration0.changed or deploy_director_configuration1.changed
+
+            - name: Set deploy_director_configuration to persist through workflow
+              ansible.builtin.set_stats:
+                data:
+                  deploy_director_configuration: "{{ deploy_director_configuration | default({}) | combine({host_name: true}) }}"
+                aggregate: true
+              when: deploy_director_configuration0.changed or deploy_director_configuration1.changed
+      # delegate_to: "{{ icinga_master }}"
+      # remote_user: "{{ icinga_master_ssh_user}}"

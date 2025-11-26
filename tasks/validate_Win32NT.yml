@@ -1,0 +1,5 @@
+---
+- name: Check if icinga2 was already configured
+  ansible.windows.win_stat:
+    path: "{{ icinga_config_base_path }}/zones.conf.orig"
+  register: icinga_already_configured

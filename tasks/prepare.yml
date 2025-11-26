@@ -1,0 +1,92 @@
+---
+- name: Preparations
+  tags: always
+  block:
+    - name: Perform satellite specific preparations
+      ansible.builtin.include_tasks: prepare_satellite.yml
+      when: is_satellite is defined and is_satellite
+
+    - name: Perform OS-specific preparations
+      ansible.builtin.include_tasks: prepare_{{ ansible_system }}.yml
+
+    - name: Set var icinga server ip
+      ansible.builtin.set_fact:
+        icinga_server_ip: "{{ icinga_server }}"
+      when: icinga_server_ip is not defined
+
+    - name: Fail when icinga server ip not defined
+      ansible.builtin.fail:
+        msg: icinga_server_ip is not defined for this host or its group, or icinga_server is invalid
+      when: icinga_server_ip is not defined
+
+    - name: Set var icinga_client_hostname
+      ansible.builtin.set_fact:
+        icinga_client_hostname: "{{ inventory_hostname | lower }}"
+      when: icinga_client_hostname is not defined
+
+    - name: Add client_prefix to icinga_client_hostname
+      when: icinga_client_prefix is defined and not icinga_client_hostname.startswith(icinga_client_prefix) and not icinga_client_hostname.startswith('i-') and not
+        icinga_client_dont_add_client_prefix_to_hostname|bool
+      block:
+        - name: Set var client_prefix
+          ansible.builtin.set_fact:
+            client_prefix: "{% if icinga_client_prefix is defined %}{{ icinga_client_prefix }}-{% else %}{% endif %}"
+
+        - name: Set var icinga_client_hostname
+          ansible.builtin.set_fact:
+            icinga_client_hostname: "{{ icinga_client_prefix + '-' + icinga_client_hostname }}"
+
+    - name: Strip custom prefix
+      ansible.builtin.set_fact:
+        icinga_client_hostname: "{{ icinga_client_hostname | regex_replace('^' + icinga_client_strip_prefix, '') }}"
+      when: icinga_client_strip_prefix is defined
+
+    - name: Strip custom suffix
+      ansible.builtin.set_fact:
+        icinga_client_hostname: "{{ icinga_client_hostname | regex_replace(icinga_client_strip_suffix + '$', '') }}"
+      when: icinga_client_strip_suffix is defined
+
+    - name: Debug var iciga_client_hostname
+      ansible.builtin.debug:
+        msg: "icinga_client_hostname: {{ icinga_client_hostname }}"
+        verbosity: 2
+
+    - name: Gathering templates
+      ansible.builtin.set_fact:
+        icinga_client_templates: "{{ lookup('list', icinga_client_templates | default([]), wantlist=True) | flatten | unique }}"
+
+    - name: Gathering extra templates
+      ansible.builtin.set_fact:
+        icinga_client_templates: "{{ icinga_client_templates + lookup('list', icinga_client_extra_templates | default([]), wantlist=True) | flatten | unique }}"
+      when: icinga_client_extra_templates is defined
+
+- name: Get ticket from icinga master
+  tags: always
+  when: not is_master
+  block:
+    - name: Generate ticket salt via API
+      ansible.builtin.uri:
+        url: https://{{ icinga_master }}:{{ icinga_master_port }}/v1/actions/generate-ticket
+        body: '{ "cn": "{{ icinga_client_hostname }}" }'
+        body_format: json
+        headers: '{ "Accept": "application/json" }'
+        method: POST
+        url_username: "{{ icinga_master_api_user }}"
+        url_password: "{{ icinga_master_api_password }}"
+        validate_certs: false
+      environment:
+        http_proxy: ""
+        https_proxy: ""
+        no_proxy: ""
+      delegate_to: localhost
+      register: api_ticket
+      changed_when: false
+      check_mode: false
+      when: icinga_master_api_password is defined
+
+    - name: Set var ticket to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          ticket: "{{ ticket | default({}) | combine({inventory_hostname: api_ticket.json.results[0].ticket}) }}"
+        aggregate: true
+      when: api_ticket is defined and api_ticket.json is defined

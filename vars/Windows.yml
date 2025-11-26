@@ -1,0 +1,13 @@
+---
+icinga_setup_default_version: 2.14.1
+icinga_setup_default_base_url: https://packages.icinga.com/windows
+icinga_setup_default_scripts_exe_url: http://downloads.clientes.eurotux.com/windows/IcingaScripts.exe
+icinga_client_templates: "{{ icinga_client_windows_templates | default(['windows']) }}"
+icinga_installation_base_path: "%PROGRAMFILES%\\ICINGA2\\"
+icinga_bin_path: "%PROGRAMFILES%/ICINGA2/sbin"
+icinga_config_base_path: "%PROGRAMDATA%\\icinga2\\etc\\icinga2\\"
+
+ntp_service_name: windows ntp_time
+icinga_client_set_snmp_community: true
+
+local_install_nagios_plugins: false

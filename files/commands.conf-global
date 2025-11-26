@@ -1,0 +1,5240 @@
+###########################################################
+###################### Disk ###############################
+###########################################################
+object CheckCommand "check-disk" {
+  import "disk"
+
+  vars.disk_exclude_type += ["fuse.xrdp-chansrv"]
+}
+
+###########################################
+################ LOAD #####################
+###########################################
+
+
+object CheckCommand "check-load-windows" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_load" ]
+
+  arguments = {
+    "-w" = "$load_warn$"
+    "-c" = "$load_crit$"
+  }
+
+  vars.load_warn = 80
+  vars.load_crit = 90
+}
+
+
+###########################################
+############## MEMORIA ####################
+###########################################
+
+object CheckCommand "check-memory-linux" {
+  import "plugin-check-command"
+  
+  command = [ PluginDir + "/check_mem.pl" ]
+ 
+  arguments = {
+    "-w" = "$mem_wfree$"
+    "-c" = "$mem_cfree$"
+    "-C" =  {
+      set_if = "$mem_cache_free$"
+    }
+    "-u" = {
+      set_if = "$mem_used$"
+    }
+  } 
+  
+  vars.mem_wfree = 80 
+  vars.mem_cfree = 90
+  vars.mem_used = true
+  vars.mem_cache_free = true
+
+}
+
+object CheckCommand "check-memory-windows" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_hugemem.exe" ]
+
+  arguments = {
+    "-t" = { skip_key = true 
+	     value = "-t=$mem_type$"
+	}
+    "-w" = { skip_key = true
+	     value = "-w=$mem_warn$"
+	   }
+    "-c" = { skip_key = true 
+	     value = "-c=$mem_crit$"	
+	}
+  }
+
+  vars.mem_type = "page"
+  vars.mem_warn = 80
+  vars.mem_crit = 90
+}
+
+
+###########################################
+################ CPU ######################
+###########################################
+
+object CheckCommand "check-cpu-linux" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_cpu" ]
+
+  arguments = {
+    "-w" = "$cpu_warn$"
+    "-c" = "$cpu_crit$"
+  }
+
+  vars.cpu_warn = 70
+  vars.cpu_crit = 80
+}
+
+
+###########################################
+############## LINUX UPTIME ###############
+######## (versao nagios-plugins ) #########
+###########################################
+
+object CheckCommand "check_uptime_linux" {
+    import "plugin-check-command"
+    command = [ PluginDir + "/check_uptime" ]
+    timeout = 1m
+    arguments += {
+        "-c" = {
+            description = "Critical threshold"
+            value = "$uptime_linux_crit$"
+        }
+        "-w" = {
+            description = "Warning threshold"
+            value = "$uptime_linux_warn$"
+        }
+        "-u" = {
+            description = "Time unit of measurement (seconds|minutes|hours|days) (default: minutes)"
+            value = "$uptime_linux_unit$"
+        }
+        "-t" = {
+            description = "Plugin timeout, default 10 seconds"
+            value = "$uptime_linux_timeout$"
+        }
+    }
+}
+
+
+###########################################
+############### SQL QUERY #################
+###########################################
+
+object CheckCommand "check_sql_query" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_sql_query.pl" ]
+
+  arguments = {
+    "-s" = {
+      value = "$sql_query_system$"
+      description = "Database system driver, e.g. mysql (mandatory)"
+      required = true
+    }
+    "-d" = {
+      value = "$sql_query_database$"
+      description = "Database name (mandatory)"
+      required = true
+    }
+    "-u" = {
+      value = "$sql_query_username$"
+      description = "Database user (mandatory)"
+      required = true
+    }
+    "-p" = {
+      value = "$sql_query_password$"
+      description = "Database password (mandatory)"
+      required = true
+    }
+    "-H" = {
+      value = "$sql_query_host$"
+      description = "Database host (mandatory)"
+      required = true
+    }
+    "-q" = {
+      value = "$sql_query$"
+      description = "Query to perform (mandatory)"
+      required = true
+    }
+    "-D" = {
+      value = "$sql_query_description$"
+      description = "Description to show in the returning message (mandatory); the substring %count% (if it exists) will be replaced by the number of rows returned by the query"
+      required = true
+    }
+    "--check-name" = {
+      value = "$sql_query_check_name$"
+      description = "Name of the check that will be shown on the output (defaults to SQL_QUERY)"
+    }
+    "--query-has-count" = {
+      set_if = "$sql_query_has_count$"
+      description = "By default the query is expected to return zero or more rows, the warning and critical threshold check will be applied to that number of rows returned and the first column values will be appended in the output. If this option is specified, the query is expected to always return a single numeric value (in a single row and column), like when you use COUNT in your query and don't need any more details to be shown"
+    }
+    "-w" = {
+      value = "$sql_query_warning$"
+      description = "Warning threshold for returned rows count"
+    }
+    "-c" = {
+      value = "$sql_query_critical$"
+      description = "Critical threshold for returned rows count"
+    }
+    "--perf-label" = {
+      value = "$sql_query_perf_label$"
+      description = "Label for perfdata (by default will be inferred from column name)"
+    }
+    "--perf-uom" = {
+      value = "$sql_query_perf_uom$"
+      description = "UOM for perfdata"
+    }
+    "--no-perfdata" = {
+      value = "$sql_query_no_perfdata$"
+      description = "Don't generate perfdata"
+    }
+    "-t" = {
+      value = "$sql_query_timeout$"
+      description = "Seconds before plugin times out (default: 15)"
+    }
+  }
+}
+
+
+###########################################
+############### MYSQL #####################
+###########################################
+
+object CheckCommand "check-mysql" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_mysql" ]
+
+  arguments = {
+    "-H" = "$mysql_host$"
+    "-d" = "$mysql_database$"
+    "-u" = "$mysql_user$"
+    "-p" = "$mysql_password$"
+    "-f" = "$mysql_file$"
+  }
+
+  vars.mysql_host = "$host.vars.mysql_hostname$"
+  vars.mysql_user = "$host.vars.mysql_username$"
+  vars.mysql_password = "$host.vars.mysql_password$"
+  vars.mysql_file = "$host.vars.mysql_file$"
+  vars.mysql_database = "$host.vars.mysql_database$"
+}
+
+
+###########################################
+############### MONGODB ###################
+###########################################
+
+object CheckCommand "check_mongodb" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_mongodb" ]
+
+  arguments = {
+    "--host" = {
+        description = "The hostname you want to connect to"
+        value = "$mongodb_host$"
+    }
+    "--host-to-check" = {
+        description = "The hostname you want to check (if this is different from the host you are connecting)"
+        value = "$mongodb_host_to_check$"
+    }
+    "--port" = {
+        description = "The port mongodb is running on"
+        value = "$mongodb_port$"
+    }
+    "--port-to-check" = {
+        description = "The port you want to check (if this is different from the port you are connecting)"
+        value = "$mongodb_port_to_check$"
+    }
+    "--user" = {
+        description = "The username you want to login as"
+        value = "$mongodb_user$"
+    }
+    "--pass" = {
+        description = "The password you want to use for that user"
+        value = "$mongodb_pass$"
+    }
+    "--warning" = {
+        description = "The warning threshold you want to set"
+        value = "$mongodb_warning$"
+    }
+    "--critical" = {
+        description = "The critical threshold you want to set"
+        value = "$mongodb_critical$"
+    }
+    "--action" = {
+        description = "The action you want to take [connect | connections | replication_lag | replication_lag_percent | replset_state | memory | memory_mapped | lock | flushing | last_flush_time | index_miss_ratio | databases | collections | database_size | database_indexes | collection_documents | collection_indexes | collection_size | collection_storageSize | queues | oplog | journal_commits_in_wl | write_data_files | journaled | opcounters | current_lock | replica_primary | page_faults | asserts | queries_per_second | page_faults | chunks_balance | connect_primary | collection_state | row_count | replset_quorum]"
+        value = "$mongodb_action$"
+    }
+    "--max-lag" = {
+        description = "Get max replication lag (for replication_lag action only)"
+        set_if = "$mongodb_max_lag$"
+    }
+    "--mapped-memory" = {
+        description = "Get mapped memory instead of resident (if resident memory can not be read)Get max replication lag (for replication_lag action only)"
+        set_if = "$mongodb_mapped_memory$"
+    }
+    "--perf-data" = {
+        description = "Get mapped memory instead of resident (if resident memory can not be read)Get max replication lag (for replication_lag action only)"
+        set_if = "$mongodb_perf_data$"
+    }
+    "--database" = {
+        description = "Specify the database to check"
+        value = "$mongodb_database$"
+    }
+    "--all-databases" = {
+        description = "Check all databases (action database_size)"
+        set_if = "$mongodb_all_databases$"
+    }
+    "--ssl" = {
+        description = "Connect using SSL"
+        set_if = "$mongodb_ssl$"
+    }
+    "--replicaset" = {
+        description = "Connect to replicaset"
+        set_if = "$mongodb_replicaset$"
+    }
+    "--querytype" = {
+        description = "The query type to check [query | insert | update | delete | getmore | command] from queries_per_second"
+        value = "$mongodb_database$"
+    }
+    "--collection" = {
+        description = "Specify the collection to check"
+        value = "$mongodb_collection$"
+    }
+    "--time" = {
+        description = "Time used to sample number of pages faults"
+        value = "$mongodb_time$"
+    }
+    "--mongoversion" = {
+        description = "The MongoDB version you are talking with, either 2 or 3"
+        value = "$mongodb_mongoversion$"
+    }
+    "--authdb" = {
+        description = "The database you want to authenticate against"
+        value = "$mongodb_authdb$"
+    }
+    "--insecure" = {
+        description = "Don't verify SSL/TLS certificates"
+        set_if = "$mongodb_replicaset$"
+    }
+    "--ssl-ca-cert-file" = {
+        description = "Path to Certificate Authority file for SSL"
+        value = "$mongodb_ssl_ca_cert_file$"
+    }
+    "--ssl-cert-file" = {
+        description = "Path to PEM encoded key and cert for client authentication"
+        value = "$mongodb_ssl_cert_file$"
+    }
+    "--auth-mechanism" = {
+        description = "Auth mechanism used for auth with mongodb"
+        value = "$mongodb_auth_mechanism$"
+    }
+  }
+
+  vars.mongodb_perf_data = true
+}
+
+
+#############################################
+########### MSSQL - SQLSERVER ###############
+#############################################
+
+object CheckCommand "check_mssql_health" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_mssql_health" ]
+
+	arguments = {
+		"--blacklist" = {
+			description = "Blacklist some (missing/failed) components"
+			value = "$mssql_blacklist$"
+		}
+		"--commit" = {
+			description = "turns on autocommit for the dbd::sybase module - THIS FIELD IS FORCED TO BE INHERITED FROM THE HOST TEMPLATE SO DO NOT EDIT THE PARENT SERVICE TEMPLATE FIELD VIA DIRECTOR WEB GUI (but you can edit each host and its services safely)"
+			set_if = "$mssql_commit$"
+		}
+		"--critical" = {
+			description = "the critical range"
+			value = "$mssql_critical$"
+		}
+		"--criticalx" = {
+			description = "The extended critical thresholds"
+			value = "$mssql_criticalx$"
+		}
+		"--currentdb" = {
+			description = "the name of a database which is used as the current database for the connection"
+			value = "$mssql_currentdb$"
+		}
+		"--dbthresholds" = {
+			description = "Read thresholds from a database table"
+			value = "$mssql_dbthresholds$"
+		}
+		"--environment" = {
+			description = "Add a variable to the plugin's environment."
+			value = "$mssql_environment$"
+		}
+		"--extra-opts" = {
+			description = "read command line arguments from an external file"
+			value = "$mssql_extraopts$"
+		}
+		"--hostname" = {
+			description = "the database server's hostname"
+			value = "$mssql_hostname$"
+		}
+		"--isvalidtime" = {
+			description = "Signals the plugin to return OK if now is not a valid check time."
+			value = "$mssql_isvalidtime$"
+		}
+		"--lookback" = {
+			description = "The amount of time you want to look back when calculating average rates. For usage in the following modes: database-file-auto-growths, database-logfile-auto-growths, database-datafile-auto-growths, database-file-auto-shrinks, database-logfile-auto-shrinks, database-datafile-auto-shrinks, database-file-dbcc-shrinks, failed-jobs."
+			value = "$mssql_lookback$"
+		}
+		"--method" = {
+			description = "how the plugin should connect to the database (dbi for using DBD::Sybase (default), sqlrelay for the SQLRelay proxy)"
+			value = "$mssql_method$"
+		}
+		"--mitigation" = {
+			description = "The parameter allows you to change a critical error to a warning."
+			value = "$mssql_mitigation$"
+		}
+		"--mode" = {
+			description = "mode of the plugin, can be: connection-time, cpu-busy, io-busy, full-scans, connected-users, transactions, batch-requests, latches-waits, latches-wait-time, locks-waits, locks-timeouts, locks-deadlocks, sql-recompilations, sql-initcompilations, total-server-memory, mem-pool-data-buffer-hit-ratio, lazy-writes, page-life-expectancy, free-list-stalls, checkpoint-pages, database-online, database-free, database-backup-age, database-logbackup-age, database-file-auto-growths, database-logfile-auto-growths, database-datafile-auto-growths, database-file-auto-shrinks, database-logfile-auto-shrinks, database-datafile-auto-shrinks, database-file-dbcc-shrinks, failed-jobs, jobs-enabled, sql, sql-runtime, list-databases, list-datafiles, list-locks"
+			required = true
+			value = "$mssql_mode$"
+		}
+		"--morphmessage" = {
+			description = "Modify the final output message."
+			value = "$mssql_morphmessage$"
+		}
+		"--morphperfdata" = {
+			description = "The parameter allows you to change performance data labels."
+			value = "$mssql_morphperfdata$"
+		}
+		"--multiline" = {
+			description = "Multiline output."
+			value = "$mssql_multiline$"
+		}
+		"--name" = {
+			description = "the name of the database etc depending on the mode"
+			value = "$mssql_name$"
+		}
+		"--name2" = {
+			description = "if name is a sql statement, this statement would appear in the output and the performance data. This can be ugly, so name2 can be used to appear instead"
+			value = "$mssql_name2$"
+		}
+		"--name3" = {
+			description = "The tertiary name of a component"
+			value = "$mssql_name3$"
+		}
+		"--negate" = {
+			description = "Emulate the negate plugin. --negate warning=critical --negate unknown=critical."
+			value = "$mssql_negate$"
+		}
+		"--nooffline" = {
+			description = "Skip the offline databases"
+			set_if = "$mssql_nooffline$"
+		}
+		"--notemp" = {
+			description = "Ignore temporary databases/tablespaces"
+			set_if = "$mssql_notemp$"
+		}
+		"--offlineok" = {
+			description = "if mode database-free finds a database which is currently offline, a WARNING is issued. If you don't want this and if offline databases are perfectly ok for you, then set this and you will get OK instead"
+			set_if = "$mssql_offlineok$"
+		}
+		"--password" = {
+			description = "the mssql user's password"
+			value = "$mssql_password$"
+		}
+		"--port" = {
+			description = "the database server's port"
+			value = "$mssql_port$"
+		}
+		"--regexp" = {
+			description = "if this parameter is set, name will be interpreted as a regular expression"
+			set_if = "$mssql_regexp$"
+		}
+		"--report" = {
+			description = "Report can be used to output only the bad news (short,long,html)"
+			value = "$mssql_report$"
+		}
+		"--selectedperfdata" = {
+			description = "The parameter allows you to limit the list of performance data."
+			value = "$mssql_selectedperfdata$"
+		}
+		"--server" = {
+			description = "the name of a predefined connection"
+			value = "$mssql_server$"
+		}
+		"--statefilesdir" = {
+			description = "An alternate directory where the plugin can save files."
+			value = "$mssql_statefilesdir$"
+		}
+		"--timeout" = {
+			description = "Seconds before plugin times out (default: 15)"
+			value = "$mssql_timeout$"
+		}
+		"--units" = {
+			description = "one of %, KB, MB, GB. This is used for a better output of mode=sql and for specifying thresholds for mode=tablespace-free"
+			value = "$mssql_units$"
+		}
+		"--username" = {
+			description = "the mssql user"
+			value = "$mssql_username$"
+		}
+		"--warning" = {
+			description = "the warning range"
+			value = "$mssql_warning$"
+		}
+		"--warningx" = {
+			description = "The extended warning thresholds"
+			value = "$mssql_warningx$"
+		}
+		"--with-mymodules-dyn-dir" = {
+			description = "Add-on modules for the my-modes will be searched in this directory."
+			value = "$mssql_withmymodulesdyndir$"
+		}
+	}
+	vars.mssql_server = "$host.name$"
+	vars.mssql_username = "$host.vars.mssql_username$"
+	vars.mssql_password = "$host.vars.mssql_password$"
+	vars.mssql_regexp = true
+}
+
+
+#################################################
+################# NUXIS ########################
+#################################################
+object CheckCommand "check_nuxis_common" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_rhv" ]
+
+	arguments = {
+		"-A" = "$nuxis_api$"
+		"-H" = {
+			value = "$nuxis_cm$"
+			required = true
+		}
+		"-a" = {
+			value = "$nuxis_user$:$nuxis_password$"
+		}
+		"-f" = {
+			value = "$nuxis_authfile$"
+		}
+		"-l" = {
+			value = "$nuxis_command$"
+		}	
+		"-s" = {
+			value = "$nuxis_subcommand$"
+		}
+		"-t" = {
+			value = "$nuxis_timeout$"
+		}
+		"-w" = {
+			value = "$nuxis_warning$"
+		}
+		"-c" = {
+			value = "$nuxis_critical$"
+		}
+		"--ignore-xml-warn" = {
+			set_if = "$nuxis_ignore_xml_warn$"
+		}
+		"--days" = {
+			value = "$nuxis_days$"
+		}
+		"--regex" = {
+			value = "$nuxis_regex$"
+		}
+		"--severity" = {
+			value = "$nuxis_severity$"
+		}
+	}
+	vars.nuxis_api = "/ovirt-engine/api"
+}
+
+object CheckCommand "check_nuxis_host" {
+	import "check_nuxis_common"
+	arguments += {
+		"-R" = {
+			value = "$nuxis_host$"
+			required = true
+		}
+	}
+	vars.nuxis_host = "$host.name$"
+}
+
+object CheckCommand "check_nuxis_datacenter" {
+	import "check_nuxis_common"
+	arguments += {
+		"-D" = {
+			value = "$nuxis_dcname$"
+			required = true
+		}
+	}
+	vars.nuxis_cm = "$address$"
+	vars.nuxis_dcname = "default"
+}
+
+object CheckCommand "check_nuxis_cluster" {
+	import "check_nuxis_common"
+	arguments += {
+		"-C" = {
+			value = "$nuxis_clustername$"
+			required = true
+		}
+	}
+	vars.nuxis_cm = "$address$"
+	vars.nuxis_clustername	= "default"
+}
+
+object CheckCommand "check_nuxis_storage" {
+	import "check_nuxis_common"
+	arguments += {
+		"-S" = {
+			value = "$nuxis_storagename$"
+			required = true
+		}
+	}
+	vars.nuxis_cm = "$address$"
+	vars.nuxis_storagename = "default"
+}
+
+object CheckCommand "check_nuxis_vm" {
+	import "check_nuxis_common"
+	arguments += {
+		"-M" = {
+			value = "$nuxis_vm$"
+			required = true
+		}
+	}
+}
+
+#####################################################
+############# SNMP (version agnostic) ###############
+####### Needed due to some limitations on ITL #######
+#####################################################
+object CheckCommand "check_snmp" {
+	command = [ PluginDir + "/check_snmp" ]
+
+	arguments = {
+		"-H" = {
+			value = "$snmp_address$"
+			description = "Host name, IP Address, or unix socket (must be an absolute path)"
+		}
+		"-o" = {
+			value = "$snmp_oid$"
+			description = "Object identifier(s) or SNMP variables whose value you wish to query"
+		}
+		"-C" = {
+			value = "$snmp_community$"
+			description = "Optional community string for SNMP communication (default is 'public')"
+		}
+		"-c" = {
+			value = "$snmp_crit$"
+			description = "Critical threshold range(s)"
+		}
+		"-w" = {
+			value = "$snmp_warn$"
+			description = "Warning threshold range(s)"
+		}
+		"-s" = {
+			value = "$snmp_string$"
+			description = "Return OK state (for that OID) if STRING is an exact match"
+		}
+		"-r" = {
+			value = "$snmp_ereg$"
+			description = "Return OK state (for that OID) if extended regular expression REGEX matches"
+		}
+		"-R" = {
+			value = "$snmp_eregi$"
+			description = "Return OK state (for that OID) if case-insensitive extended REGEX matches"
+		}
+		"-l" = {
+			value = "$snmp_label$"
+			description = "Prefix label for output from plugin"
+		}
+		"-u" = {
+			value = "$snmp_units$"
+			description = "Units label(s) for output data (e.g., 'sec.')"
+		}
+		"-t" = {
+			value = "$snmp_timeout$"
+			description = "Seconds before connection times out (default: 10)"
+		}
+		"-p" = {
+			value = "$snmp_port$"
+			description = "Port number (default: 161)"
+		}
+		"-e" = {
+			value = "$snmp_retries$"
+			description = "Number of retries to be used in the requests"
+		}
+		"--invert-search" = {
+			set_if = "$snmp_invert_search$"
+			description = "Invert search result and return CRITICAL if found"
+		}
+		"-P" = {
+			value = "$snmp_version$"
+			description = "SNMP protocol version"
+		}
+		"-m" = {
+			value = "$snmp_miblist$"
+			description = "List of MIBS to be loaded (default = none if using numeric OIDs or 'ALL' for symbolic OIDs.)"
+		}
+		"--rate-multiplier" = {
+			value = "$snmp_rate_multiplier$"
+			description = "Converts rate per second. For example, set to 60 to convert to per minute"
+		}
+		"--rate" = {
+			set_if = "$snmp_rate$"
+			description = "Enable rate calculation"
+		}
+		"-n" = {
+			set_if = "$snmp_getnext$"
+			description = "Use SNMP GETNEXT instead of SNMP GET"
+		}
+		"--offset" = {
+			value = "$snmp_offset$"
+			description = "Add/substract the specified OFFSET to numeric sensor data"
+		}
+		"-D" = {
+			value = "$snmp_output_delimiter$"
+			description = "Separates output on multiple OID requests"
+		}
+		"-O" = {
+			set_if = "$snmp_perf_oids$"
+			description = "Label performance data with OIDs instead of --label's"
+		}
+		"-P" = {
+			value = "$snmp_protocol$"
+			description = "The SNMP protocol to use (default: 2c, other possibilities: 1,3)"
+		}
+		"-L" = {
+			value = "$snmp_seclevel$"
+			description = "SNMPv3 securityLevel [noAuthNoPriv|authNoPriv|authPriv]"
+		}
+		"-N" = {
+			value = "$snmp_context$"
+			description = "SNMPv3 context"
+		}
+		"-U" = {
+			value = "$snmp_username$"
+			description = "SNMPv3 username"
+		}
+		"-a" = {
+			value = "$snmp_authprotocol$"
+			description = "The authentication protocol for SNMPv3 (md5|sha)"
+		}
+		"-A" = {
+			value = "$snmp_authpassword$"
+			description = "The authentication password for SNMPv3"
+		}
+		"-x" = {
+			value = "$snmp_privprotocol$"
+			description = "The private protocol for SNMPv3 (des|aes|aes128|3des|3desde)"
+		}
+		"-X" = {
+			value = "$snmp_privpassword$"
+			description = "The password for SNMPv3 authPriv security level"
+		}
+}
+
+	vars.snmp_address = {{
+		var addr_v4 = macro("$address$")
+		var addr_v6 = macro("$address6$")
+
+		if (addr_v4) {
+			return addr_v4
+		} else {
+			return "udp6:[" + addr_v6 + "]"
+		}
+	}}
+	vars.snmp_invert_search = false
+	vars.snmp_timeout = "10"
+}
+
+#####################################################
+################### SNMP TIME #######################
+#####################################################
+object CheckCommand "check_snmp_time" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_snmp_time.pl" ]
+
+	arguments = {
+		"-H" = {
+			value = "$snmp_time_host$"
+			required = true
+		}
+		"-C" = {
+			value = "$snmp_time_community$"
+			required = true
+		}
+		"-p" = {
+			value = "$snmp_time_port$"
+		}
+		"-w" = {
+			value = "$snmp_time_warning$"
+			required = true
+		}
+		"-c" = {
+			value = "$snmp_time_critical$"
+			required = true
+		}
+		"-o" = {
+			value = "$snmp_time_tzoffset$"
+		}
+	}
+	vars.snmp_time_host = "$address$"
+	vars.snmp_time_community = "$snmp_time_community$"
+	vars.snmp_time_warning = 4
+	vars.snmp_time_critical = 8
+}
+
+#####################################################
+################## DISK_SNMP ########################
+#####################################################
+object CheckCommand "check_disk_snmp" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_disk_snmp.pl" ]
+
+	arguments = {
+		"-H" = {
+			value = "$disk_snmp_host$"
+			required = true
+		}
+		"-s" = {
+			value = "$disk_snmp_community$"
+		}
+		"-p" = {
+			value = "$disk_snmp_port$"
+		}
+		"-d" = {
+			value = "$disk_snmp_device$"
+		}
+		"-w" = {
+			value = "$disk_snmp_warning$"
+		}
+		"-c" = {
+			value = "$disk_snmp_critical$"
+		}
+	}
+	vars.disk_snmp_host = "$address$"
+}
+
+
+#####################################################
+################## STORAGE ##########################
+#####################################################
+
+object CheckCommand "check_v3700" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_v3700.pl" ]
+
+        arguments = {
+		"-cluster" = "$v3700_cluster$"
+		"-user" = "$v3700_user$"
+		"-keyfile" = "$v3700_keyfile$"
+		"-check" = {
+			value = "$v3700_check$"
+			required = true
+			description = "Possible values are: lunonline, luninsync, lsarray, lsdrive, lsenclosure, lsenclosurebattery, lsenclosurecanister, lsenclosurepsu, lsenclosureslotx ( lsenclosureslotx = lsenclosureslot1 ... lsenclosureslotx )"
+		}
+		"-v" = {
+			set_if = "$v3700_verbose$"
+		}
+	}
+
+	vars.v3700_cluster = "$address$"
+	vars.v3700_keyfile = "/etc/icinga2/keys/id_rsa"
+	vars.v3700_verbose = true
+	vars.v3700_user = "icinga"
+}
+
+#####################################################
+###################### UPS ##########################
+#####################################################
+
+object CheckCommand "check_ups" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_ups.pl" ]
+
+	arguments = {
+	"-H" = "$ups_hostname$"
+	"-C" = "$ups_communty$"
+	"-v" = "$ups_protocol$"
+	}
+
+	vars.ups_hostname = "$address$"
+	vars.ups_communty = "public"
+	vars.ups_protocol = "1"
+}
+
+###########################################################
+############## BIND (statistics based) ####################
+###########################################################
+object CheckCommand "check_bind" {
+	import "plugin-check-command"
+	command = [ "/usr/bin/sudo", PluginDir + "/check_bind.pl" ]
+
+	arguments = {
+		"--pid-path" = {
+			value = "$bind_pid_path$"
+			description = "/path/to/named.pid (Default: /var/run/named/named.pid)"
+		}
+		"--stats-path" = {
+			value = "$bind_stats_path$"
+			description = "/path/to/named.stats (Default: /var/named/data/named_stats.txt)"
+		}
+		"--stats-seek" = {
+			value = "$bind_stats_seek$"
+			description = "bytes to seek backwards to read last stats (Default: 20480)"
+		}
+		"--rndc-args" = {
+			value = "$bind_rndc_args$"
+			description = "additional args to rndc (Default: None)"
+		}
+		"--timeout" = {
+			value = "$bind_timeout$"
+			description = "seconds to wait before dying (Default: 30)"
+		}
+	}
+	vars.bind_pid_path = "/var/run/named/named.pid"
+	vars.bind_stats_path = "/var/named/data/named_stats.txt"
+}
+
+######################################################
+##################### MYSQL ##########################
+######################################################
+object CheckCommand "check_mysql_health" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_mysql_health" ]
+
+	arguments = {
+		"--blacklist" = {
+		    description = "Blacklist some (missing/failed) components"
+		    value = "$mysql_blacklist$"
+		}
+		"--commit" = {
+		    description = "turns on autocommit for the dbd::* module"
+		    value = "$mysql_commit$"
+		}
+		"--critical" = {
+		    description = "the critical range"
+		    value = "$mysql_critical$"
+		}
+		"--criticalx" = {
+		    description = "The extended critical thresholds"
+		    value = "$mysql_criticalx$"
+		}
+		"--database" = {
+		    description = "the database's name"
+		    value = "$mysql_database$"
+		}
+		"--environment" = {
+		    description = "Add a variable to the plugin's environment."
+		    value = "$mysql_environment$"
+		}
+		"--extra-opts" = {
+		    description = "Read command line arguments from an external file."
+		    value = "$mysql_extraopts$"
+		}
+		"--hostname" = {
+		    description = "the database server's hostname"
+		    value = "$mysql_hostname$"
+		}
+		"--isvalidtime" = {
+		    description = "Signals the plugin to return OK if now is not a valid check time."
+		    value = "$mysql_isvalidtime$"
+		}
+		"--labelformat" = {
+		    description = "one of pnp4nagios (which is the default) or groundwork"
+		    value = "$mysql_labelformat$"
+		}
+		"--lookback" = {
+		    description = "The amount of time you want to look back when calculating average rates."
+		    value = "$mysql_lookback$"
+		}
+		"--method" = {
+		    description = "how the plugin should connect to the database (dbi for using DBD::mysql (default), mysql for using the mysql-Tool)"
+		    value = "$mysql_method$"
+		}
+		"--mitigation" = {
+		    description = "The parameter allows you to change a critical error to a warning."
+		    value = "$mysql_mitigation$"
+		}
+		"--mode" = {
+		    description = "the mode of the plugin"
+		    value = "$mysql_mode$"
+		}
+		"--morphmessage" = {
+		    description = "Modify the final output message."
+		    value = "$mysql_morphmessage$"
+		}
+		"--morphperfdata" = {
+		    description = "The parameter allows you to change performance data labels."
+		    value = "$mysql_morphperfdata$"
+		}
+		"--multiline" = {
+		    description = "Multiline output."
+		    value = "$mysql_multiline$"
+		}
+		"--name" = {
+		    description = "The name of a specific component to check"
+		    value = "$mysql_name$"
+		}
+		"--name2" = {
+		    description = "The secondary name of a component"
+		    value = "$mysql_name2$"
+		}
+		"--name3" = {
+		    description = "The tertiary name of a component"
+		    value = "$mysql_name3$"
+		}
+		"--negate" = {
+		    description = "Emulate the negate plugin. --negate warning=critical --negate unknown=critical."
+		    value = "$mysql_negate$"
+		}
+		"--nooffline" = {
+		    description = "skip the offline databases"
+		    value = "$mysql_nooffline$"
+		}
+		"--notemp" = {
+		    description = "Ignore temporary databases/tablespaces"
+		    value = "$mysql_notemp$"
+		}
+		"--password" = {
+		    description = "the mysql db user's password"
+		    value = "$mysql_password$"
+		}
+		"--port" = {
+		    description = "the database's port"
+		    value = "$mysql_port$"
+		}
+		"--regexp" = {
+		    description = " Parameter name/name2/name3 will be interpreted as (perl) regular expression."
+		    value = "$mysql_regexp$"
+		}
+		"--report" = {
+		    description = "Can be used to shorten the output."
+		    value = "$mysql_report$"
+		}
+		"--selectedperfdata" = {
+		    description = "The parameter allows you to limit the list of performance data."
+		    value = "$mysql_selectedperfdata$"
+		}
+		"--socket" = {
+		    description = "the database's unix socket"
+		    value = "$mysql_socket$"
+		}
+		"--statefilesdir" = {
+		    description = "An alternate directory where the plugin can save files."
+		    value = "$mysql_statefilesdir$"
+		}
+		"--timeout" = {
+		    description = "plugin timeout. Default is 60 seconds"
+		    value = "$mysql_timeout$"
+		}
+		"--units" = {
+		    description = "This is used for a better output of mode=sql and for specifying thresholds for mode=tablespace-free"
+		    value = "$mysql_units$"
+		}
+		"--username" = {
+		    description = "the mysql db user"
+		    value = "$mysql_username$"
+		}
+		"--warning" = {
+		    description = "the warning range"
+		    value = "$mysql_warning$"
+		}
+		"--warningx" = {
+		    description = "The extended warning thresholds"
+		    value = "$mysql_warningx$"
+		}
+		"--with-mymodules-dyn-dir" = {
+		    description = "Add-on modules for the my-modes will be searched in this directory."
+		    value = "$mysql_withmymodulesdyndir$"
+		}
+	}
+	vars.mysql_server = "$host.name$"
+	vars.mysql_username = "$host.vars.mysql_username$"
+	vars.mysql_password = "$host.vars.mysql_password$"
+}
+
+object CheckCommand "check_mysql_table_status" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_mysql_table_status.pl" ]
+
+        arguments = {
+                "-H" = "$mysql_hostname$"
+                "-u" = "$mysql_username$"
+                "-p" = "$mysql_password$"
+                "-d" = {
+                        value = "$mysql_database$"
+                        required = true
+                }
+        }
+        vars.mysql_server = "$host.name$"
+        vars.mysql_username = "$host.vars.mysql_username$"
+        vars.mysql_password = "$host.vars.mysql_password$"
+        vars.mysql_hostname = "$host.vars.mysql_hostname$"
+}
+
+object CheckCommand "check_mysql_err" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_mysql_err.pl" ]
+
+        arguments = {
+          "-t" = {
+            description = "Float value that can be expressed as days (ex: 1d), hours (ex: 1.5h), minutes (ex: 30m), or seconds (ex: 45s); default is hours"
+            value = "$mysql_err_time$"
+            required = true
+          }
+          "-e" = {
+            description = "consider OK if log file(s) do not exist"
+            set_if = "$mysql_err_nonexistant_log_ok$"
+            required = false
+          }
+          "-a" = {
+            description = "try to retrieve the @@log_error variable from a running mysql, even if some log files are given"
+            set_if = "$mysql_err_always_retrieve_log_error$"
+            required = false
+          }
+          "-A" = {
+            description = "like -a, but consider a critical failure if retrieving the log file name"
+            set_if = "$mysql_err_always_retrieve_log_error_or_fail$"
+            required = false
+          }
+          "-i" = {
+            description = "consider only messages that match given regular expression (mutually exclusive with -x)"
+            value = "$mysql_err_include_regex$"
+            required = false
+          }
+          "-x" = {
+            description = "consider all but the messages that match given regular expression (mutually exclusive with -i)"
+            value = "$mysql_err_exclude_regex$"
+            required = false
+          }
+          "logfile" = {
+            skip_key = true
+            value = "$mysql_err_logfile$"
+            required = false
+          }
+        }
+
+        vars.mysql_err_time = "6h"
+        vars.mysql_err_nonexistant_log_ok = false
+        # note: if vars.mysql_err_logfile is empty, the check will try to "guess" the correct logfile by connecting to the mysql server
+}
+
+###########################################################
+##################### IMAP ################################
+###########################################################
+object CheckCommand "check_imap" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_imap" ]
+
+        arguments = {
+        "-H" = "$imap_address$"
+        "-p" = {
+		value = "$imap_port$"
+		required = false
+	}
+        "-S" = {
+                set_if = "$imap_ssl$"
+        }
+        "-D" = {
+                value = "$imap_days_cert_expire$"
+                required = false
+        }
+        "-t" = {
+                value = "$imap_timeout$"
+                required = false
+        }
+
+	}
+	vars.imap_address = "$address$"
+}
+###########################################################
+##################### SIMAP ################################
+###########################################################
+object CheckCommand "check_simap" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_simap" ]
+        
+        arguments = {
+        	"-H" = "$simap_address$"
+        	"-p" = "$simap_port$"
+
+	}
+	vars.simap_address = "$address$"
+}
+
+###########################################################
+##################### POP ################################
+###########################################################
+object CheckCommand "check_pop" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_pop" ]
+
+        arguments = {
+        	"-H" = "$pop_address$"
+        	"-p" = "$pop_port$"
+        	"-S" = {
+                	set_if = "$pop_ssl$"
+        	}
+        	"-D" = {
+                	value = "$pop_days_cert_expire$"
+                	required = false
+        	}
+        	"-t" = {
+                	value = "$pop_timeout$"
+                	required = false
+        	}
+	}
+	vars.pop_address = "$address$"
+}
+
+###########################################################
+##################### SPOP ################################
+###########################################################
+object CheckCommand "check_spop" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_spop" ]
+        
+        arguments = {
+        	"-H" = "$spop_address$"
+        	"-p" = "$spop_port$"
+	}
+	vars.spop_address = "$address$"
+}
+
+###########################################################
+##################### Mail Blacklist#######################
+###########################################################
+
+object CheckCommand "check_bl" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_bl" ]
+        
+        arguments = {
+        "-H" = "$bl_address$"
+        "-B" = "$blacklistips$"
+	}
+
+	vars.bl_address="$address$"
+	vars.blacklistips = "bl.spamcop.net,smtp.dnsbl.sorbs.net,socks.dnsbl.sorbs.net,l1.spews.dnsbl.sorbs.net,l2.spews.dnsbl.sorbs.net,barracudacentral.org,b.barracudacentral.org"
+}
+
+###########################################################
+##################### VMware VDP ##########################
+###########################################################
+
+object CheckCommand "check_vdp_backups" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_vdp.pl" ]
+
+        arguments = {
+        	"--host" = "$vdp_address$"
+		"--check" = "$vdp_checktype$"
+		"--server" = { 
+			value = "$vdp_vm$"
+			required = false
+		}
+		"--dbusername" = "$vdp_username$"
+		"--dbpassword" = "$vdp_password$"
+		"--warning" =  {
+                         value = "$vdp_warning$"
+                         required = false
+                }
+		"--critical" = { 
+			value = "$vdp_critical$"
+			required = false
+                }
+        }
+}
+
+###########################################################
+######################## Avamar ###########################
+###########################################################
+
+object CheckCommand "check_avamar" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_avamar.pl" ]
+
+	arguments = {
+		"--host" = {
+			value = "$avamar_host$"
+			required = true
+		}
+		"--db-credentials-file" = {
+			value = "$avamar_db_credentials_file$"
+			required = true
+		}
+		"--check" = {
+			value = "$avamar_check$"
+			required = true
+			description = "type of check: activity or diskspace"
+		}
+		"--long" = {
+			set_if = "$avamar_long$"
+			description = "display each error detail in its line"
+		}
+		"--client" = {
+			value = "$avamar_client$"
+			description = "name of backup client to check; will check all if also no clientlike specified and will consider error if client not found/enabled; can be specified multiple times"
+			repeat_key = true
+		}
+		"--client-like" = {
+			value = "$avamar_client_like$"
+			description = "sql like expression similar to clientname; performance wise --client should be better unless you use wildcards, also --client will consider critical if the client is not found, while --clientlike will consider unknown if no matches (at all) are found; can be specified multiple times"
+			repeat_key = true
+		}
+		"--exclude-client" = {
+			value = "$avamar_exclude_client$"
+			description = "filter out client names; can be specified multiple times"
+			repeat_key = true
+		}
+		"--exclude-client-like" = {
+			value = "$avamar_exclude_client_like$"
+			description = "sql like expression as for exclude-client; performance wise, --exclude-client should be better unless you use wildcards; can be specified multiple times"
+			repeat_key = true
+		}
+		"--force-code-ok" = {
+			value = "$avamar_force_code_ok$"
+			description = "consider specific non-fatal status code as OK (fatal error codes will still be considered as critical); can be specified multiple times"
+			repeat_key = true
+		}
+		"--timezone" = {
+			value = "$avamar_timezone$"
+			description = "to have time in your timezone (default: UTC)"
+		}
+		"--db-name" = {
+			value = "$avamar_db_name$"
+			description = "database name (default: mcdb)"
+		}
+		"--db-port" = {
+			value = "$avamar_db_port$"
+			description = "port number for database (default: 5555)"
+		}
+		"--warning" = {
+			value = "$avamar_warning$"
+			description = "for client backup check, warning for number of days since last successfull backup (default: 1, use 0 to disable, must be less than critical if not 0); for diskspace, percent of full disk (default: 85)"
+		}
+		"--critical" = {
+			value = "$avamar_critical$"
+			description = "for client backup check, critical for number of days since last successfull backup (default: 2, use 0 to disable, must be greater than warning if not 0); for diskspace, percent of full disk (default: 90)"
+		}
+		"--warn-errors-client" = {
+			value = "$avamar_warn_errors_client$"
+			description = "warn if at least X errors have happened per client on last (days-errors-client) days (default: 2, use 0 to disable, must be less than crit-errors-client if not 0)"
+		}
+		"--crit-errors-client" = {
+			value = "$avamar_crit_errors_client$"
+			description = "critical if at least X errors have happened per client on last (days-errors-client) days (default: 3, use 0 to disable, must be greater than crit-errors-client if not 0)"
+		}
+		"--days-errors-client" = {
+			value = "$avamar_days_errors_client$"
+			description = "for warn-errors-client and crit-errors-client (unused if both are 0, minimum 1, default: 5)"
+		}
+		"--warn-total-errors" = {
+			value = "$avamar_warn_total_errors$"
+			description = "warn if X errors have happened for all the client combined on last (days-total-errors) days (default: 4, use 0 to disable, must be less than crit-total-errors if not 0)"
+		}
+		"--crit-total-errors" = {
+			value = "$avamar_crit_total_errors$"
+			description = "critical if X errors have happened for all the client combined on last (days-total-errors) days (default: 5, use 0 to disable, must be greater than warn-total-errors if not 0)"
+		}
+		"--days-total-errors" = {
+			value = "$avamar_days_total_errors$"
+			description = "for warn-total-errors and crit-total-errors (unused if both are 0, minimum 1, default: 1)"
+		}
+	}
+}
+
+######################################################
+##################### DRUPAL #########################
+######################################################
+object CheckCommand "check_drupal" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_drupal" ]
+
+        arguments = {
+                "-U" = "$drupal_unique_id$"
+		"-H" = "$drupal_hostname$"
+		"-P" = "$drupal_path_to_nagios$"
+		"-t" = "$drupal_timeout_seconds$"
+	}
+}
+
+######################################################
+####################### AJP ##########################
+######################################################
+object CheckCommand "check_ajp" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_ajp" ]
+
+        arguments = {
+                "--app" = "$ajp_app$"
+                "--port" = {
+			value = "$ajp_port$"
+			required = false
+		}
+                "--warn" = {
+			value = "$ajp_warn$"
+			required = false
+		}
+                "--crit" = {
+			value = "$ajp_crit$"
+			required = false
+		}
+                "--timeout" = {
+			value = "$ajp_timeout$"
+		}
+        }
+}
+
+######################################################
+##################### LDAP ###########################
+######################################################
+object CheckCommand "check_ldap" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_ldap" ]
+
+	arguments = {
+                "-H" = "$ldap_hostname$"
+		"-b" = "$ldap_base$"
+                "-p" = {
+			value = "$ldap_port$"
+			required = false
+		}
+                "-a" = {
+			value = "$ldap_attr$"
+			required = false
+		}
+		"-P" = {
+                        value = "$ldap_password$"
+                        required = false
+                }
+		"-D" = {
+                        value = "$ldap_bind$"
+                        required = false
+                }
+		"-w" = {
+                        value = "$ldap_warn$"
+                        required = false
+                }
+                "-c" = {
+                        value = "$ldap_crit$"
+                        required = false
+                }
+		"-t" = {
+                        value = "$ldap_timeout$"
+                        required = false
+                }
+        }
+}
+
+######################################################
+################### DISKIO_UCD #######################
+######################################################
+object CheckCommand "check_diskio_ucd" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_diskio_ucd" ]
+
+        arguments = {
+		"--timeout" = {
+                        value = "$diskio_timeout$"
+                        required = false
+                }
+                "--hostname" = {
+                        value = "$diskio_hostname$"
+                        required = false
+                }
+                "--device" = {
+                        value = "$diskio_device$"
+                        required = false
+                }
+                "--snmpvers" = {
+                        value = "$diskio_snmpversion$"
+                        required = false
+                }
+                "--community" = {
+                        value = "$diskio_community$"
+                        required = false
+                }
+		"--port" = {
+                        value = "$diskio_port$"
+                        required = false
+                }
+                "--warn" = {
+                        value = "$diskio_warn$"
+                        required = false
+                }
+                "--crit" = {
+                        value = "$diskio_crit$"
+                        required = false
+                }
+		"-W" = {
+			value = "$diskio_warn_io$"
+                        required = false
+		}
+		"-K" = {
+                        value = "$diskio_crit_io$"
+                        required = false
+                }
+                "-u" = {
+			value = "$diskio_username$"
+			required = false
+		}
+                "-o" = {
+			value = "$diskio_authpassword$"
+			required = false
+		}
+                "-r" = {
+			value = "$diskio_authprotocol$"
+			required = false
+		}
+                "-O" = {
+			value = "$diskio_privpassword$"
+			required = false
+		}
+                "-R" = {
+			value = "$diskio_privprotocol$"
+			required = false
+		}
+        }
+	vars.diskio_warn = "11"
+	vars.diskio_crit = "15"
+	vars.diskio_warn_io = "300"
+	vars.diskio_crit_io = "500"
+}
+
+######################################################
+##################### PGSQL ##########################
+######################################################
+object CheckCommand "check_postgres" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_postgres" ]
+
+        arguments = {
+                "--host" = "$postgres_name$"
+                "--dbuser" = "$postgres_dbuser$"
+                "--dbpass" = "$postgres_dbpass$"
+                "--port" = {
+			value = "$postgres_port$"
+			required = false
+		}
+                "--dbname" = {
+			value = "$postgres_dbname$"
+			required = false
+		}
+                "--dbservice" = {
+			value = "$postgres_dbservice$"
+			required = false
+		}
+                "-w" =  {
+                        value = "$postgres_warning$"
+                        required = false
+                }
+		"-c" =  {
+                        value = "$postgres_critical$"
+                        required = false
+                }
+		"--include" =  {
+                        value = "$postgres_include$"
+                        required = false
+                }
+		"--exclude" =  {
+                        value = "$postgres_exclude$"
+                        required = false
+                }
+		"--includeuser" =  {
+                        value = "$postgres_includeuser$"
+                        required = false
+                }
+                "--excludeuser" =  {
+                        value = "$postgres_excludeuser$"
+                        required = false
+                }
+		"--action" =  {
+                        value = "$postgres_action$"
+                        required = false
+                }
+	}
+}
+
+object CheckCommand "check_postgres_backup" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_db_backup_pgsql.pl" ]
+}
+
+object CheckCommand "check_mongo_backup" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_db_backup_mongo.pl" ]
+}
+
+
+######################################################
+#################### TELNET ##########################
+######################################################
+object CheckCommand "check_telnet" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_telnet" ]
+
+ 	arguments = {
+		"-H" = "$telnet_host$"
+		"-p" = "$telnet_port$"
+		"-b" = {
+			value = "$telnet_bind$"
+			required = false
+		}
+		"-n" = {
+                        set_if = "$telnet_no_ssl$"
+                }
+		"-4" = {
+                        set_if = "$telnet_ipv4$"
+                }
+		"-6" = {
+                        set_if = "$telnet_ipv6$"
+                }
+		"-c" = {
+			value = "$telnet_command$"
+			required = false
+		}
+		"-t" = {
+                        value = "$telnet_timeout$"
+                        required = false
+                }
+		"-a" = {
+                        value = "$telnet_arglist$"
+                        required = false
+                }
+	}
+}
+
+
+######################################################
+################ IBM BLADECENTER #####################
+######################################################
+object CheckCommand "check_ibm_bladecenter" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_snmp_IBM_Bladecenter" ]
+ 
+	arguments = {
+                "-H" = "$ibm_bladecenter_hostname$"
+                "-C" = "$ibm_bladecenter_community$"
+                "-t" = "$ibm_bladecenter_test$"
+                "-w" = {
+                        value = "$ibm_bladecenter_warning$"
+                        required = false
+                }
+                "-c" = {
+                        value = "$ibm_bladecenter_critical$"
+                        required = false
+                }
+        }	
+}
+
+######################################################
+#################### DATA DOMAIN #####################
+######################################################
+object CheckCommand "check_datadomain" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_datadomain" ]
+
+	arguments = {
+		"-H" = "$datadomain_hostname$"
+		"--method" = "$datadomain_method$"
+		"-C" = {
+			value = "$datadomain_community$"
+			required = false
+		}
+		"--protocol" = {
+			value = "$datadomain_protocol$"
+			required = false
+		}
+		"--iface" = {
+			value = "$datadomain_iface$"
+			required = false
+		}
+		"--warning" = {
+			value = "$datadomain_warning$"
+			required = false
+		}
+		"--critical" = {
+			value = "$datadomain_critical$"
+			required = false
+		}
+	}
+	vars.datadomain_hostname = "$address$"
+}
+
+object CheckCommand "check_datadomain_specifics" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_datadomain_specifics.pl" ]
+
+	arguments = {
+		"-H" = {
+			value = "$datadomain_specifics_hostname$"
+			required = true
+			description = "Data Domain hostname or address; can also specify the user to connect as, e.g. user@host"
+		}
+		"-t" = {
+			value = "$datadomain_specifics_type$"
+			required = true
+			description = "Check type, e.g. POSTCOMP"
+		}
+		"-f" = {
+			value = "$datadomain_specifics_authfile$"
+			required = false
+			description = "Either an authfile or a keyfile must be specified. Neither can be world accessible or this check will refuse to use them. If an authfile is given and has only one line, it will be interpreted as the password. If it has multiple lines, first line will be interpreted as the user and the second the password (other lines will be ignored)."
+		}
+		"-k" = {
+			value = "$datadomain_specifics_keyfile$"
+			required = false
+			description = "Either an authfile or a keyfile must be specified. Neither can be world accessible or this check will refuse to use them. A keyfile is a standard SSH id keyfile, ssh-keygen or similarly generated."
+		}
+		"--filter" = {
+			value = "$datadomain_specifics_filter$"
+			required = false
+			description = "Filter based on optional regular expression"
+		}
+		"-w" = {
+			value = "$datadomain_specifics_warning$"
+			required = false
+			description = "Warning threshold. Can be a value in GiB or a percentage."
+		}
+		"-c" = {
+			value = "$datadomain_specifics_critical$"
+			required = false
+			description = "Critical threshold. Can be a value in GiB or a percentage."
+		}
+	}
+	vars.datadomain_specifics_hostname = "$address$"
+}
+
+######################################################
+###################  EMC CLARIION ####################
+######################################################
+object CheckCommand "check_emc_clariion" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_emc_clariion.pl" ]
+
+	arguments = {
+		"-H" = "$emc_clariion_hostname$"
+		"-u" = "$emc_clariion_user$"
+		"-p" = "$emc_clariion_password$"
+		"--secfilepath" = "$emc_clariion_secfilepath$"
+		"-t" = "$emc_clariion_type$"
+		"--port" = "$emc_clariion_port$"
+		"--node" = "$emc_clariion_node$"
+		"--paths" = "$emc_clariion_paths$"
+		"--sp" = "$emc_clariion_sp$"
+		"--lun_id" = "$emc_clariion_lun_id$"
+		"--raid_group_id" = "$emc_clariion_raid_group_id$"
+		"--storage_pool_id" = "$emc_clariion_storage_pool_id$"
+		"--temp_type" = "$emc_clariion_storage_temp_type$"
+		"--minspare" = "$emc_clariion_storage_minspare$"
+		"--warn" = "$emc_clariion_warn$"
+		"--crit" = "$emc_clariion_crit$"
+	}
+}
+
+######################################################
+################## DELL EMC UNITY ####################
+######################################################
+object CheckCommand "check_emc_unity" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_unity.py" ]
+
+	arguments = {
+		"-H" = {
+			value = "$emc_unity_hostname$"
+			required = true
+		}
+		"-u" = {
+			value = "$emc_unity_user$"
+			required = true
+		}
+		"-p" = {
+			value = "$emc_unity_password$"
+			required = true
+		}
+		"-m" = {
+			value = "$emc_unity_method$"
+			required = true
+			description = "battery,dae,disk,dpe,ethernetport,fan,fcport,iomodule,lcc,memorymodule,pool,powersupply,sasport,ssc,ssd,storageprocessor,storageresource,system,uncommittedport"
+		}
+		"-i" = {
+			value = "$emc_unity_include$"
+			description = "Include only items whose name matches given regular expression"
+		}
+		"-e" = {
+			value = "$emc_unity_exclude$"
+			description = "Exclude items whose name matches given regular expression"
+		}
+		"-E" = {
+			set_if = "$emc_unity_empty_is_error$"
+			description = "If a check returns empty results, consider it as an error (critical) instead of OK"
+		}
+		"-w" = {
+			value = "$emc_unity_warning$"
+			description = "Warning percentage for used space on storageresource check; if specified, --critical must also be specified"
+		}
+		"-c" = {
+			value = "$emc_unity_critical$"
+			description = "Critical percentage for used space on storageresource check; if specified, only accountable items are reported, perfdata is given and internal storageresource alerts are ignored; if not specified, only internal storageresource alerts are reported (for all items, with no perfdata)"
+		}
+	}
+	vars.emc_unity_hostname = "$address$"
+}
+
+######################################################
+########### STORAGE NETAPP (ONTAP API) ###############
+######################################################
+object CheckCommand "check_netapp_ontap" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_netapp_ontap.pl" ]
+
+	arguments = {
+		"-H" = {
+			value = "$netapp_hostname$"
+			required = true
+			description = "Hostname or address of the cluster administrative interface."
+		}
+		"-u" = {
+			value = "$netapp_user$"
+			required = true
+			description = "Username of a Netapp Ontapi enabled user."
+		}
+		"-p" = {
+			value = "$netapp_password$"
+			required = true
+			description = "Password for the netapp Ontapi enabled user."
+		}
+		"-o" = {
+			value = "$netapp_option$"
+			required = true
+			description = "The name of the option you want to check. One of: volume_health, aggregate_health, snapshot_health, quota_health, snapmirror_health, filer_hardware_health, port_health, vscan_health, interface_health, netapp_alarms, cluster_health, clusternnode_health, disk_health, disk_spare" 
+		}
+		"-s" = {
+			value = "$netapp_suboption$"
+			description = "If available for the option, allow to specify the list of the checks to perform."
+		}
+		"-w" = {
+			value = "$netapp_warning$"
+			description = "A custom warning threshold value. See the option and threshold list of the command's help text."
+		}
+		"-c" = {
+			value = "$netapp_critical$"
+			description = "A custom critical threshold value. See the option and threshold list of the command's help text."
+		}
+		"-m" = {
+			value = "$netapp_modifier$"
+			description = "This modifier is used to set an inclusive or exclusive filter on what you want to monitor: include|exclude,pattern1,pattern2,etc"
+		}
+		"-n" = {
+			value = "$netapp_node$"
+			description = "Name of a vhost or cluster-node to restrict this query to."
+		}
+	}
+	vars.netapp_hostname = "$address$"
+}
+
+######################################################
+#################### DB REPLICA ######################
+######################################################
+object CheckCommand "check_db_replica" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_db_replica.pl" ]
+}
+
+#######################################################
+###################### DISK SMB #######################
+#######################################################
+object CheckCommand "check_disk_smb" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_disk_smb" ]
+
+        arguments = {
+                "--hostname" = "$disk_smb_hostname$"
+		"--share" = "$disk_smb_share$"
+		"--user" = "$disk_smb_user$"
+		"--password" = "$disk_smb_password$"
+		"--workgroup" = {
+			value = "$disk_smb_workgroup$"
+			required = false
+		}
+		"--address" = {
+			value = "$disk_smb_address$"
+			required = false
+		}
+		"--port" = {
+                        value = "$disk_smb_port$"
+                        required = false
+                }
+		"--warning" = {
+                        value = "$disk_smb_warning$"
+                        required = false
+                }
+		"--critical" = {
+                        value = "$disk_smb_critical$"
+                        required = false
+                }
+        }
+	vars.disk_smb_warning = "85%"
+	vars.disk_smb_critical = "95%"
+}
+
+#######################################################
+###################### DISK NFS #######################
+#######################################################
+object CheckCommand "check_disk_nfs" {
+    import "plugin-check-command"
+    command = [ PluginDir + "/check_nfs" ]
+
+    arguments = {
+        "server" = {
+            value = "$check_disk_nfs_server$"
+            required = true
+            skip_key = true
+            order = 1
+        }
+        "remote_mountpoint" = {
+            value = "$check_disk_nfs_remote_mountpoint$"
+            required = true
+            skip_key = true
+            order = 2
+        }
+        "warning" = {
+            value = "$check_disk_nfs_warning$"
+            required = true
+            skip_key = true
+            order = 3
+        }
+        "critical" = {
+            value = "$check_disk_nfs_critical$"
+            required = true
+            skip_key = true
+            order = 4
+        }
+    }
+    vars.check_disk_nfs_warning = "20%"
+    vars.check_disk_nfs_critical = "10%"
+}
+
+#######################################################
+##################### NFS FILE ########################
+#######################################################
+object CheckCommand "check_nfs_file" {
+    import "plugin-check-command"
+    command = [ PluginDir + "/check_nfs_file" ]
+
+    arguments = {
+        "server" = {
+            value = "$check_nfs_file_server$"
+            required = true
+            skip_key = true
+            order = 1
+        }
+        "remote_dir" = {
+            value = "$check_nfs_file_remote_dir$"
+            required = true
+            skip_key = true
+            order = 2
+        }
+        "filename" = {
+            value = "$check_nfs_file_filename$"
+            required = true
+            skip_key = true
+            order = 3
+        }
+        "warn_age_secs" = {
+            value = "$check_nfs_file_warn_age$"
+            required = false
+            skip_key = true
+            order = 4
+        }
+        "crit_age_secs" = {
+            value = "$check_nfs_file_crit_age$"
+            required = false
+            skip_key = true
+            order = 5
+        }
+    }
+}
+
+###########################################
+################ Symantec #################
+###########################################
+
+object CheckCommand "check_symantec_av" {
+    import "plugin-check-command"
+
+    command = [ "c:/windows/system32/cscript.exe" ]
+
+    arguments = {
+        "//NoLogo" = {
+            required = true
+            order = -4
+        }
+        "Scriptfile" = {
+            value = PrefixDir + "/sbin/check_av.vbs"
+            required = true
+            skip_key = true
+            order = -3
+        }
+        "/w" = {
+            description = "(required): warning offset in days"
+            value = "/w:$av_warn$"
+            required = false
+            skip_key = true
+            order = -2
+        }
+        "/c" = {
+            description = "(required): critical offset in days"
+            value = "/c:$av_crit$"
+            required = false
+            skip_key = true
+            order = -1
+        }
+    }
+
+    vars.av_warn = "1"
+    vars.av_crit = "3"
+}
+
+###########################################################
+##################### VMware Replication ##########################
+###########################################################
+object CheckCommand "check_vmware_replication" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_vmware_replication" ]
+        timeout = vars.vmware_replication_timeout
+
+        arguments = {
+                "--ip" = "$vmware_replication_ip$"
+                "--user" = "$vmware_replication_user$"
+                "--interval" = {
+                        value = "$sweep_interval$"
+                        required = false
+                }
+        }
+        vars.vmware_replication_timeout = 480
+	vars.vmware_replication_ip = "$address$"
+	vars.vmware_replication_user = "root"
+}
+
+###########################################################
+##################### CPU USAGE ###########################
+###########################################################
+object CheckCommand "check_cpu_usage" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_cpu_usage" ]
+
+        arguments = {
+                "--hostname" = "$cpu_usage_hostname$"
+      		"--community" = "$cpu_usage_community$"
+		"--timeout" = {
+			value = "$cpu_usage_timeout$"
+			required = false
+                }
+		"--snmpversion" = {
+                        value = "$cpu_usage_snmpversion$"
+                        required = false
+                }
+		"--noperfdata" = {
+                        value = "$cpu_usage_noperfdata$"
+                        required = false
+                }
+		"--warning" = {
+			value = "$cpu_usage_warning$"
+                        required = false
+		}
+		"--critical" = {
+                        value = "$cpu_usage_critical$"
+                        required = false
+                }
+	}
+	vars.cpu_usage_hostname = "$address$"
+	vars.cpu_usage_warning = 90
+	vars.cpu_usage_critical = 90
+	vars.cpu_usage_community = "e1t2u3x4"
+	vars.cpu_usage_timeout = 10
+}
+
+###########################################################
+######################## APC ##############################
+###########################################################
+object CheckCommand "check_apc" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_apc.pl" ]
+
+        arguments = {
+		"-H" = "$address$"
+		"-C" = "$snmp_community$"
+		"-l" = "$apc_command$"
+		"-p" = {
+			value = "$apc_port$"
+			required = false
+		}
+		"-t" = {
+			value = "$apc_timeout$"
+			required = false
+		}
+		"-w" = {
+			value = "$apc_warning$"
+			required = false
+		}
+		"-c" = {
+			value = "$apc_critical$"
+			required = false
+		}
+		"-u" = {
+			value = "$apc_script$"
+			required = false
+		}
+	}
+	vars.snmp_community = "public"
+}
+
+###########################################################
+###################### Synology ###########################
+###########################################################
+object CheckCommand "check_synology" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_snmp_synology" ]
+
+        arguments = {
+		"-h" = "$synology_hostname$"
+		"-u" = {
+			value = "$synology_username$"
+			required = false
+		}
+		"-p" = {
+                        value = "$synology_password$"
+                        required = false
+                }
+		"-2" = {
+                        value = "$synology_community$"
+                        required = false
+                }
+		"-W" = {
+                        value = "$synology_temp_warn$"
+                        required = false
+                }
+		"-C" = {
+                        value = "$synology_temp_crit$"
+                        required = false
+                }
+		"-w" = {
+                        value = "$synology_usage_warn$"
+                        required = false
+                }
+		"-c" = {
+                        value = "$synology_usage_crit$"
+                        required = false
+                }
+		"-i" = {
+			set_if = "$synology_ignore_dsm_updates$"
+		}
+		"-U" = {
+			set_if = "$synology_ups_info$"
+		}
+		"-v" = {
+                        set_if = "$synology_verbose$"
+                }
+	}
+	vars.synology_hostname = "$address$"
+	vars.synology_verbose = true
+}	
+
+###########################################
+################ ARCSERVE #################
+###########################################
+object CheckCommand "check_arcserve_jobstatus" {
+    	import "plugin-check-command"
+
+    	command = [ "c:/windows/system32/cscript.exe" ]
+
+    	arguments = {
+        	"//NoLogo" = {
+            		required = true
+            		order = -2
+        	}
+        	"Scriptfile" = {
+            		value = PrefixDir + "/sbin/check_arcserve_jobstatus.vbs"
+            		required = true
+            		skip_key = true
+			order = -1
+        	}
+	}
+}
+
+###########################################################
+##################### Storcenter ##########################
+###########################################################
+object CheckCommand "check_storcenter" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_storcenter.sh" ]
+
+        arguments = {
+                "-H" = "$storcenter_hostname$"
+                "-U" = "$storcenter_user$"
+                "-P" = "$storcenter_password$"
+                "-t" = "$storcenter_type$"
+                "-w" = {
+                        value = "$storcenter_warning$"
+                        required = false
+                }
+                "-c" = {
+                        value = "$storcenter_critical$"
+                        required = false
+                }
+        }
+	vars.storcenter_hostname = "$address$"
+}
+
+###########################################
+############### MEMCACHED #################
+###########################################
+object CheckCommand "check_memcached" {
+    	import "plugin-check-command"
+
+    	command = [ PluginDir + "/check_memcached.pl" ]
+
+	arguments = {
+	        "-H" = "$memcached_hostname$" 
+		"-A" = {
+			value = "$memcached_perfvars$"
+			required = true
+		}
+	        "-p" = {
+			value = "$memcached_port$"
+			required = false
+	        }
+		"-t" = {
+			value = "$memcached_timeout$"
+	            	required = false
+		}
+		"-s" = {
+			value = "$memcached_stat$"
+	                required = false
+		}
+		"--total_free" = {
+			value = "$memcached_total_free$"
+	                required = false
+		}
+		"--bytes_written" = {
+			value = "$memcached_bytes_written$"
+	                required = false
+		}
+		"--bytes_written_rate" = {
+			value = "$memcached_bytes_written_rate$"
+			required = false
+		}
+		"--curr_items" = {
+			value = "$memcached_curr_items$"
+			required = false
+		}
+		"--uptime" = {
+			value = "$memcached_uptime$"
+			required = false
+		}
+		"--uptime_rate" = {
+			value = "$memcached_uptime_rate$"
+			required = false
+		}
+		"--get_hits" = {
+			value = "$memcached_get_hits$"
+			required = false
+		}
+		"--get_hits_rate" = {
+			value = "$memcached_get_hits_rate$"
+			required = false
+		}
+		"--total_connections" = {
+			value = "$memcached_total_connections$"
+			required = false
+		}
+		"--total_connections_rate" = {
+			value = "$memcached_total_connections_rate$"
+			required = false
+		}
+		"--get_misses" = {
+			value = "$memcached_get_misses$"
+			required = false
+		}
+		"--get_misses_rate" = {
+			value = "$memcached_get_misses_rate$"
+			required = false
+		}
+		"--bytes" = {
+			value = "$memcached_bytes$"
+			required = false
+		}
+		"--curr_connections" = {
+			value = "$memcached_curr_connections$"
+			required = false
+		}
+		"--connection_structures" = {
+			value = "$memcached_connection_structures$"
+			required = false
+		}
+		"--total_items" = {
+			value = "$memcached_total_items$"
+			required = false
+		}
+		"--total_items_rate" = {
+			value = "$memcached_total_items_rate$"
+			required = false
+		}
+		"--auth_cmds" = {
+			value = "$memcached_auth_cmds$"
+			required = false
+		}
+		"--auth_cmds_rate" = {
+			value = "$memcached_auth_cmds_rate$"
+			required = false
+		}
+		"--evictions" = {
+			value = "$memcached_evictions$"
+			required = false
+		}
+		"--evictions_rate" = {
+			value = "$memcached_evictions_rate$"
+			required = false
+		}
+		"--limit_maxbytes" = {
+			value = "$memcached_limit_maxbytes$"
+			required = false
+		}
+		"--cmd_get" = {
+			value = "$memcached_cmd_get$"
+			required = false
+		}
+		"--cmd_get_rate" = {
+			value = "$memcached_cmd_get_rate$"
+			required = false
+		}
+		"--bytes_read" = {
+			value = "$memcached_bytes_read$"
+			required = false
+		}
+		"--bytes_read_rate" = {
+			value = "$memcached_bytes_read_rate$"
+			required = false
+		}
+		"--threads" = {
+			value = "$memcached_threads$"
+			required = false
+		}
+		"--auth_errors" = {
+			value = "$memcached_auth_errors$"
+			required = false
+		}
+		"--auth_errors_rate" = {
+			value = "$memcached_auth_errors_rate$"
+			required = false
+		}
+	}
+	vars.memcached_hostname = "$address$"
+	vars.memcached_perfvars = "hash_bytes,cas_hits,conn_yields,cmd_set,bytes_written,curr_items,uptime,rusage_system,reclaimed,get_hits,touch_hits,touch_misses,incr_misses,total_connections,evicted_unfetched,delete_misses,cmd_touch,expired_unfetched,decr_misses,get_misses,bytes,curr_connections,time,pointer_size,connection_structures,total_items,decr_hits,evictions,accepting_conns,auth_cmds,limit_maxbytes,rusage_user,reserved_fds,delete_hits,cmd_get,incr_hits,cas_badval,bytes_read,hash_is_expanding,threads,hash_power_level,cas_misses,auth_errors,listen_disabled_num,cmd_flush,rusage_user_ms,rusage_system_ms"
+}
+
+###########################################################
+####################### NGINX #############################
+###########################################################
+object CheckCommand "check_nginx" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_nginx_status.pl" ]
+
+        arguments = {
+                "-H" = "$nginx_hostname$"
+		"-p" = {
+			value = "$nginx_port$"
+			required = false
+		}
+		"-u" = {
+                        value = "$nginx_url$"
+                        required = false
+                }
+		"-s" = {
+                        value = "$nginx_servername$"
+                        required = false
+                }
+		"-S" = {
+			set_if = "$nginx_ssl$"	
+		}
+		"-U" = {
+                        value = "$nginx_username$"
+                        required = false
+                }
+		"-P" = {
+			value = "$nginx_password$"
+                        required = false
+                }
+		"-r" = {
+			value = "$nginx_realm$"
+                        required = false
+		}
+		"-m" = {
+                        value = "$nginx_maxreach$"
+                        required = false
+                }
+		"-t" = {
+                        value = "$nginx_timeout$"
+                        required = false
+                }
+                "-w" = {
+                        value = "$nginx_warning$"
+                        required = false
+                }
+                "-c" = {
+                        value = "$nginx_critical$"
+                        required = false
+                }
+        }
+        vars.nginx_hostname = "$address$"
+	vars.nginx_servername = "lvs"
+        #vars.apc_warning = "10000,100,200"
+        #vars.apc_critical = "20000,200,300"
+}
+
+###########################################################
+######################## BGP ##############################
+###########################################################
+object CheckCommand "check_bgp" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_bgp.0.4.pl" ]
+
+        arguments = {
+                "-H" = "$bgp_hostname$"
+                "-C" = "$bgp_community$"
+                "-v" = {
+                        value = "$bgp_snmp_version$"
+                        required = false
+                }
+		"-p" = {
+                        value = "$bgp_peer$"
+                        required = false
+                }
+	}
+	vars.bgp_hostname = "$address$"
+	vars.bgp_community = "e1t2u3x4"
+}
+
+###########################################################
+################## BIRD (BGP, etc. ) ######################
+###########################################################
+object CheckCommand "check_bird" {
+	import "plugin-check-command"
+	command = [ "/usr/bin/sudo", PluginDir + "/check_bird.pl" ]
+
+	arguments = {
+		"-p" = {
+			value = "$bird_peer$"
+			required = true
+		}
+		"-r" = {
+			set_if = "$bird_routeserver$"
+		}
+	}
+}
+
+######################################################
+##################### Checks Powershell ##############
+######################################################
+object CheckCommand "powershell" {
+	import "plugin-check-command"
+
+	command = [ "c:/Windows/system32/WindowsPowerShell/v1.0/powershell.exe" ]
+	arguments = {
+		"-ExecutionPolicy" = {
+			value = "$ps_policy$"
+			order = -2
+		}
+		"-File" = {
+			value = "$ps_file$"
+			order = -1
+		}
+	}
+	vars.ps_policy = "RemoteSigned"
+}
+
+######################################################
+##################### Check Backups Veeam ############
+######################################################
+object CheckCommand "check_veeam" {
+	import "powershell"
+
+	arguments += {
+		"-File" = {
+			value = SysconfDir + "/icinga2/scripts/check_veeam.ps1"
+			order = -1
+		}
+		"-Name" =  {
+			value = "$veeam_name$"
+			description = "wildcard specifying jobs, if empty then check all jobs (always taking exclude parameter in account if it exists)"
+			order = 1
+		}
+		"-Exclude" =  {
+			value = "$veeam_exclude$"
+			description = "wildcard specifying jobs to exclude from check"
+			order = 2
+		}
+		"-ExcludeRegex" =  {
+			value = "$veeam_exclude_regex$"
+			description = "regular expression specifying jobs to exclude from check"
+			order = 3
+		}
+		"-CheckNotScheduled" =  {
+			description = "always check all jobs, even if not scheduled"
+			set_if = "$veeam_check_not_scheduled$"
+			order = 4
+		}
+		"-WarnPeriod" =  {
+			value = "$veeam_warn$"
+			description = "warn period in days, default 1"
+			order = 5
+		}
+		"-CritPeriod" =  {
+			value = "$veeam_crit$"
+			description = "critical period in days, default 2"
+			order = 6
+		}
+	}
+}
+
+######################################################
+##################### Check Tape Veeam ###############
+######################################################
+object CheckCommand "check_veeam_tape" {
+	import "powershell"
+
+	arguments += {
+		"-File" = {
+			value = SysconfDir + "/icinga2/scripts/check_veeam_tape.ps1"
+			order = -1
+		}
+		"-Name" =  {
+			value = "$veeam_tape_name$"
+			description = "wildcard specifying jobs, if empty then check all jobs (always taking exclude parameter in account if it exists)"
+			order = 1
+		}
+		"-Exclude" =  {
+			value = "$veeam_tape_exclude$"
+			description = "wildcard specifying jobs to exclude from check"
+			order = 2
+		}
+		"-ExcludeRegex" =  {
+			value = "$veeam_tape_exclude_regex$"
+			description = "regular expression specifying jobs to exclude from check"
+			order = 3
+		}
+		"-CheckNotScheduled" =  {
+			description = "always check all jobs, even if not scheduled"
+			set_if = "$veeam_tape_check_not_scheduled$"
+			order = 4
+		}
+		"-WarnPeriod" =  {
+			value = "$veeam_tape_warn$"
+			description = "warn period in days, default 1"
+			order = 5
+		}
+		"-CritPeriod" =  {
+			value = "$veeam_tape_crit$"
+			description = "critical period in days, default 2"
+			order = 6
+		}
+	}
+}
+
+######################################################
+##################### Check Backups VeeamCC ############
+######################################################
+object CheckCommand "check_veeamcc" {
+	import "powershell"
+
+	arguments += {
+		"-File" = {
+			value = SysconfDir + "/icinga2/scripts/check_veeamcc.ps1"
+			order = -1
+		}
+		"-Client" =  {
+			value = "$veeam_tenant$"
+			description = "specify the tenant jobs"
+			order = 1
+		}
+	}
+}
+
+######################################################
+##################### Check Citrix Status ############
+######################################################
+object CheckCommand "check_citrix_status" {
+	import "powershell"
+
+	arguments += {
+		"-File" = {
+			value = SysconfDir + "/icinga2/scripts/check_citrix_status.ps1"
+			order = -1
+		}
+		"-CheckType" =  {
+			value = "$check_citrix_status_type$"
+			description = "One of: AcctServiceStatus, AnalyticsServiceStatus, BrokerServiceStatus, ConfigServiceStatus, EnvTestServiceStatus, HypServiceStatus, MonitorServiceStatus, ProvServiceStatus, SfServiceStatus, AdminServiceStatus, AppLibServiceStatus, LogServiceStatus, OrchServiceStatus, TrustServiceStatus, BrokercontrollerSid, BrokerControllerNS, BrokerDbConn"
+			order = 1
+			required = true
+		}
+		"-SQLServer" =  {
+			value = "$check_citrix_status_sqlserver$"
+			description = "(only and mandatory for check type BrokerDbConnSQL) SQL DB connection server instance name"
+			order = 2
+		}
+		"-Database" =  {
+			value = "$check_citrix_status_database$"
+			description = "(only and mandatory for check type BrokerDbConnSQL) SQL DB connection initial catalog database name"
+			order = 3
+		}
+		"-AuthFile" =  {
+			value = "$check_citrix_auth_file$"
+			description = "Path to a XML file on the machine with credentials of a Citrix User with enough privileges"
+			order = 4
+		}
+	}
+	vars.check_citrix_auth_file = SysconfDir + "/check_citrix_status.xml"
+}
+
+######################################################
+############## Check Azure AD Connection #############
+######################################################
+object CheckCommand "check_azure_ad_connection" {
+	import "powershell"
+
+	arguments += {
+       		"-File" = {
+			value = SysconfDir + "/icinga2/scripts/check_azure_ad_connection.ps1"
+			order = -1
+		}
+		"-f" =  {
+			value = "$azure_ad_auth_file$"
+			description = "auth file path"
+			required = true
+		 }
+		"-d" =  {
+			value = "$azure_ad_domain$"
+			description = "filter domain on UserPrincipalName"
+		 }
+		"-s" =  {
+			value = "$azure_ad_name$"
+			description = "filter name on UserPrincipalName and DisplayName"
+		 }
+		"-w" =  {
+			value = "$azure_ad_warning$"
+			description = "warning level: 0 to ignore (default: 1)"
+		 }
+		"-c" =  {
+			value = "$azure_ad_critical$"
+			description = "critical level: 0 to ignore (default: 1)"
+		 }
+		"-a" =  {
+			set_if = "$azure_ad_unlicensed_users$"
+			description = "include unlicensed users"
+		}
+	}
+	vars.azure_ad_auth_file = SysconfDir + "/check_azure_ad_connection.xml"
+}
+
+######################################################
+#################### IBM TS TAPE #####################
+######################################################
+object CheckCommand "check_ibm_ts_tape" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_ibm_ts_tape.pl" ]
+
+        arguments = {
+                "-H" = "$ibm_ts_hostname$" 
+            	"-C" = "$ibm_ts_community$"
+		"-m" = "$ibm_ts_model$"
+		"-t" = "$ibm_ts_type$"
+        }
+	vars.ibm_ts_hostname = "$address$"
+	vars.ibm_ts_community = "public"
+	vars.ibm_ts_model = "ts3100"
+}
+
+######################################################
+##################### PaceMaker ######################
+######################################################
+object CheckCommand "pacemaker" {
+        import "plugin-check-command"
+
+	command = ["/etc/scripts/check_pcs_cluster"]
+
+}
+
+###########################################################
+################### Mounted Partitions ####################
+###########################################################
+object CheckCommand "check_mounted_partitions" {
+	import "plugin-check-command"
+
+	command = [ PluginDir + "/check_mounted_disks.pl" ]
+
+	arguments = {
+		"--excluded" = {
+			value = "$excluded_mountpoints$"
+			required = false
+			repeat_key = true
+		}
+		"--excludedre" = {
+			value = "$excluded_mountpoints_regex$"
+			required = false
+		}
+		"--blkid" = {
+                        value = "$mounted_partitions_blkid$"
+                        required = false
+                }
+		"--lsblk" = {
+                        value = "$mounted_partitions_lsblk$"
+                        required = false
+                }
+
+	}
+}
+
+
+###########################################################
+########################## IPMI ###########################
+###########################################################
+object CheckCommand "check_ipmi" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_ipmi.pl" ]
+
+}
+
+object CheckCommand "check_ipmi_sensor" {
+        # Note: this command also exists in the Icinga2 ITL as "ipmi-sensor" but it is severily borked there. For instance, it forces a default for $ipmi_address$ thus making it impossible to use as a local check with icinga director, hence the need to provide this correct checkcommand alternative until either the ITL version is changed upstream, or icinga director provides means to unset inherited values (issue open since 2018 but ignored by icinga director devs: https://github.com/Icinga/icingaweb2-module-director/issues/1681 )
+	import "plugin-check-command"
+
+	command = [ "/usr/bin/sudo", PluginDir + "/check_ipmi_sensor" ]
+
+	arguments = {
+		"-H" = {
+			value = "$ipmi_address$"
+			description = "Hostname or ip address of the IPMI interface (if empty then check locally, but if so you must make sure to run it via agent)"
+		}
+		"-f" = {
+			value = "$ipmi_config_file$"
+			description = "Only needed for remote check. Path to the FreeIPMI configuration file, must contain lines with username, password and privilege-level (tipically \"user\") directives."
+		}
+		"-U" = {
+			value = "$ipmi_username$"
+			description = "Username to connect with (note: ipmi_config_file is usually preferred)"
+		}
+		"-P" = {
+			value = "$ipmi_password$"
+			description = "Password to use (note: ipmi_config_file is usually preferred)"
+		}
+		"-L" = {
+			value = "$ipmi_privilege_level$"
+			description = "Privilege level of the user (note: ipmi_config_file is usually preferred)"
+		}
+		"-O" = {
+			value = "$ipmi_additional_options$"
+			description = "Additional options for FreeIPMI. Useful for elder FreeIPMI versions that don't support config files, or for advanced/specific options needed for some hardware"
+		}
+		"--seloptions" = {
+			value = "$ipmi_seloptions$"
+			description = "Additional options for FreeIPMI SEL command. Useful for passing extra options to the ipmi-sel call, e.g. \"--assume-system-event-records\" or \"--cipher-suite-id=17\""
+		}
+		"-b" = {
+			set_if = "$ipmi_backward_compatibility_mode$"
+			description = "Enable backward compatibility mode (for FreeIPMI 0.5.*)"
+		}
+		"-T" = {
+			value = "$ipmi_sensor_type$"
+			description = "Limit sensors to query based on IPMI sensor type (separated by comma)"
+		}
+		"-ST" = {
+			value = "$ipmi_sel_type$"
+			description = "Limit SEL entries to specific types. (separated by comma)"
+		}
+		"-x" = {
+			value = "$ipmi_exclude_sensor_id$"
+			description = "Exclude sensors matching ipmi_sensor_id. (separated by comma)"
+		}
+		"-xT" = {
+			value = "$ipmi_exclude_sensor$"
+			description = "Exclude sensors based on IPMI sensor type. (separated by comma)"
+		}
+		"-xST" = {
+			value = "$ipmi_exclude_sel$"
+			description = "Exclude SEL entries of specific sensor types. (separated by comma)"
+		}
+		"-i" = {
+			value = "$ipmi_sensor_id$"
+			description = "Include sensor matching ipmi_sensor_id"
+		}
+		"--nosel" = {
+			set_if = "$ipmi_no_sel_checking$"
+			description = "Turn off system event log checking via ipmi-sel"
+		}
+		"--nothresholds" = {
+			set_if = "$ipmi_no_thresholds$"
+			description = "Turn off performance data thresholds from output-sensor-thresholds"
+		}
+		"-D" = {
+			value = "$ipmi_protocol_lan_version$"
+			description = "Change the protocol LAN version (default: LAN_2_0)"
+		}
+		"-fc" = {
+			value = "$ipmi_number_of_active_fans$"
+			description = "Number of fans that should be active"
+		}
+		"--fru" = {
+			set_if = "$ipmi_show_fru$"
+			description = "Print the product serial number got by ipmi-fru"
+		}
+		"--assettag" = {
+			set_if = "$ipmi_show_assettag$"
+			description = "Print the assettag if it is available in the IPMI FRU data. (--fru is mandatory)"
+		}
+		"--board" = {
+			set_if = "$ipmi_show_board$"
+			description = "Print additional motherboard information if it is available in the IPMI FRU data. (--fru is mandatory)"
+		}
+		"--noentityabsent" = {
+			set_if = "$ipmi_noentityabsent$"
+			description = "Skip sensor checks for sensors that have 'noentityabsent' as event state"
+		}
+		"-vv" = {
+			set_if = "$ipmi_verbose$"
+			description = "Be Verbose multi line output, also with additional details for warnings"
+		}
+		"-vvv" = {
+			set_if = "$ipmi_debug$"
+			description = "Be Verbose debugging output, followed by normal multi line output"
+		}
+		"-us" = {
+			value = "$ipmi_unify_file$"
+			description = "Path to the unify file to unify sensor names."
+		}
+	}
+	# please DON'T define default values here, see note above
+}
+
+object CheckCommand "check_remote_ipmi_sensor" {
+	import "check_ipmi_sensor"
+
+	command = [ PluginDir + "/check_ipmi_sensor" ]
+}
+
+
+###########################################################
+####################### BONDING ###########################
+###########################################################
+object CheckCommand "check_bonding" {
+  import "plugin-check-command"
+
+  command = [ PluginDir + "/check_linux_bonding" ]
+
+}
+
+###########################################################
+######################## MD RAID ##########################
+###########################################################
+object CheckCommand "check_md_raid" {
+  import "plugin-check-command"
+
+  command = [ "/etc/scripts/check_md_raid" ]
+
+}
+
+###########################################################
+###################### SWIFT RECON ########################
+###########################################################
+object CheckCommand "check_swift_recon" {
+  import "plugin-check-command"
+
+  command = [ "/usr/bin/sudo", "/etc/scripts/check_swift_recon" ]
+
+  arguments = {
+                "-f" = "$swift_recon_field$"
+                "-w" = {
+                        value = "$swift_recon_warning$"
+                        required = false
+                }
+                "-c" = {
+                        value = "$swift_recon_critical$"
+                        required = false
+                }
+        }
+}
+
+###########################################################
+######################### SWIFT ###########################
+###########################################################
+object CheckCommand "check_swift" {
+  import "plugin-check-command"
+
+  command = [ "/etc/scripts/check_swift" ]
+
+  arguments = {
+                "-A" = "$swift_url$"
+                "-U" = {
+                        value = "$swift_username$"
+                        required = false
+                }
+                "-K" = {
+                        value = "$swift_key$"
+                        required = false
+                }
+		"-T" = {
+			value = "$swift_tenant$"
+                        required = false
+		}
+		"-V" = {
+                        value = "$swift_authversion$"
+                        required = false
+                }
+		"-c" = {
+                        value = "$swift_container$"
+                        required = false
+                }
+		"-s" = {
+                        value = "$swift_maxsize$"
+                        required = false
+                }
+        }
+}
+
+###########################################################
+#################### SWIFT DISPERSION #####################
+###########################################################
+object CheckCommand "check_swift_dispersion" {
+  import "plugin-check-command"
+
+#  command = [ "/usr/bin/sudo", "/etc/scripts/check_swift_dispersion", "2>/dev/null" ]
+  command = "/usr/bin/sudo /etc/scripts/check_swift_dispersion 2>/dev/null"
+
+}
+
+###########################################################
+#################### SWIFT RING USAGE #####################
+###########################################################
+object CheckCommand "check_swift_ring_usage" {
+  import "plugin-check-command"
+
+  command = [ "/usr/bin/sudo", "/etc/scripts/check_swift_ring_usage" ]
+
+}
+
+###########################################################
+################## SWIFT OBJECT SERVERS ###################
+###########################################################
+object CheckCommand "check_swift_object_servers" {
+  import "plugin-check-command"
+
+  command = [ "/usr/bin/sudo", "/etc/scripts/check_swift_object_servers" ]
+
+}
+
+###########################################################
+###################### CLUSTER IP #########################
+###########################################################
+object CheckCommand "check_clusterip" {
+  import "plugin-check-command"
+
+  var clusterip_address = "$clusterip_address$"
+  command = [ "/usr/bin/sudo", "/etc/scripts/check_cluster_ip.sh", clusterip_address]
+}
+
+###########################################################
+####################### Check CRM #########################
+###########################################################
+object CheckCommand "check_crm" {
+  import "plugin-check-command"
+
+  command = [ "/etc/scripts/check_crm" ]
+}
+
+###########################################################
+###################### Check DRBD #########################
+###########################################################
+object CheckCommand "check_drbd" {
+  import "plugin-check-command"
+
+  command = [ "/usr/bin/sudo", "/etc/scripts/check_drbd" ]
+}
+
+###########################################################
+######################### UWSGI ###########################
+###########################################################
+object CheckCommand "check_uwsgi" {
+  import "plugin-check-command"
+
+  command = [ "uwsgi" ]
+
+  arguments = {
+                "--socket" = {
+                        value = "$uwsgi_socket$"
+                        required = false
+                }
+                "--plugin" = {
+                        value = "$uwsgi_plugin$"
+                        required = false
+			order = -3
+                }
+		"--nagios" = {
+			set_if = "$uwsgi_nagios$"
+			required = false
+			order = -2
+		}
+        }
+}
+
+###########################################################
+##################### NGINX REMOTE ########################
+###########################################################
+object CheckCommand "check_nginx_remote" {
+  import "plugin-check-command"
+
+  command = [ "/usr/bin/sudo", "/etc/scripts/check_nginx.sh" ]
+
+  arguments = {
+                "-H" = {
+                        value = "$nginx_hostname$"
+                        required = false
+                }
+                "-P" = {
+                        value = "$nginx_port$"
+                        required = false
+                }
+                "-p" = {
+			value = "$nginx_path_pid$"
+                        required = false
+                }
+		"-n" = {
+                        value = "$nginx_name_pid$"
+                        required = false
+                }
+                "-N" = {
+                        set_if = "$nginx_no_pid_check$"
+                        required = false
+                }
+		"-s" = {
+                        value = "$nginx_status$"
+                        required = false
+                }
+                "-S" = {
+                        set_if = "$nginx_secure$"
+                        required = false
+                }
+                "-w" = {
+                        value = "$nginx_warning$"
+                        required = false
+                }
+                "-c" = {
+                        set_if = "$nginx_critical$"
+                        required = false
+                }
+        }
+}
+
+#######################################################
+###################### EMS-TIME #######################
+#######################################################
+object CheckCommand "check_ems_time" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_ems_time" ]
+
+        arguments = {
+                "time" = {  
+                    value = "$ems_time_arg$"
+                    skip_key = true
+                }
+        }
+}
+
+###########################################################
+### EVENT HANDLER TO INVOKE RESTART COMMANDS VIA NRPE  ####
+###########################################################
+object EventCommand "restart_nrpe" {
+  import "plugin-event-command"
+
+  # Explanation: if the restart_nrpe_command arg has a value named MYSERVICE, an NRPE command named "restart_MYSERVICE" is invoked
+  command = [ SysconfDir + "/icinga2/conf.d/scripts/handler_restart_nrpe.sh" ]
+
+  env = {
+    SERVICESTATE = "$service.state$"
+    SERVICESTATETYPE = "$service.state_type$"
+    SERVICEATTEMPT = "$service.check_attempt$"
+    HOSTADDRESS = "$address$"
+  }
+
+  arguments = {
+    "-u" = {
+      description = "restart service when servicestate=unknown"
+      set_if = "$restart_nrpe_unknown$"
+      order = 1
+    }
+    "-H" = {
+      value = "$restart_nrpe_address$"
+      required = false
+      order = 2
+    }
+    "restart_nrpe_command" = {
+      skip_key = true
+      value = "$restart_nrpe_command$"
+      required = true
+      order = 3
+    }
+    "restart_nrpe_timeout" = {
+      skip_key = true
+      value = "$restart_nrpe_timeout$"
+      required = false
+      order = 4
+    }
+  }
+
+  vars.restart_nrpe_timeout = "20"
+}
+
+###########################################################
+####################### EVENT LOG #########################
+###########################################################
+object CheckCommand "check-eventlog" {
+	import "powershell"
+
+	arguments += {
+       		"-File" = {
+			value = SysconfDir + "/icinga2/scripts/Check-EventLog.ps1"
+			order = -1
+		}
+                "-ComputerName" = {
+			value = "$eventlog_computername$"
+			description = "Machine to check, leave empty for local computer"
+		}
+		"-LogName" = {
+			value = "$eventlog_logname$"
+			description = "Log name to check (e.g. Application, Security), default is System"
+		}
+		"-Id" = {
+			value = "$eventlog_id$"
+			description = "Optional filter by one or more event IDs separated by commas"
+		}
+		"-ProviderName" = {
+			value = "$eventlog_providername$"
+			description = "Optional filter by one or more provider names separated by commas (e.g. Microsoft-Windows-Kernel-General,ADSync)"
+		}
+       		"-Message" = {
+			value = "$eventlog_message$"
+			description = "Optional filter by message matching regexp. If this option is specified, any matching event will be considered as CRITICAL no matter its level"
+		}
+       		"-Minutes" = {
+			value = "$eventlog_minutes$"
+			description = "How long to look back when searching events"
+		}
+       		"-MaxEvents" = {
+			value = "$eventlog_maxevents$"
+			description = "Maximum number of matching events to return when checking"
+		}
+       		"-Levels" = {
+			value = "$eventlog_levels$"
+			description = "Filter by event levels, comma separated. Possible values are Verbose,Informational,Warning,Error,Critical,LogAlways. Default is Critical,Error,Warning"
+		}
+		"-AllFoundCritical" = {
+			set_if = "$eventlog_allfoundcritical$"
+			description = "By default matching events level is translated to plugin status like this: Warning is WARNING, Error and Critical are CRITICAL, the rest (if included with the levels option) is OK. By specifying this option, or by specifying a Message filter, any matching event is considered as CRITICAL"
+		}
+        }
+	vars.eventlog_logname = "System"
+        vars.eventlog_minutes = 5
+        vars.eventlog_maxevents = 100
+	vars.eventlog_levels = "Critical,Error,Warning"
+}
+
+object CheckCommand "check-eventlog-legacy" {
+        import "plugin-check-command"
+
+        command = [ PluginDir + "/eventlog_nrpe_nt.exe" ]
+
+        arguments = {
+                "-m" = "$eventlog_minutes$"
+                "-s" = {
+                        value = "$eventlog_services$"
+                        required = false
+                }
+                "-i" = {
+                        value = "$eventlog_eventids$"
+                        required = false
+                }
+        }
+        vars.eventlog_minutes = 120
+        vars.eventlog_services = "Service Control Manager,UmrdpService,Print,TermDD,NRPE_NT,W32Time,DCOM,AutoEnrollment,Winlogon,LsaSrv"
+        vars.eventlog_eventids = "56,1008,1010,1023,1111,1530,2004,2013,4005,5722,5723,5805,9646,10016,368746"
+}
+
+#############################################
+################# WINPROCESS ################
+#############################################
+object CheckCommand "check_winprocess" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_winprocess.exe" ]
+
+        arguments = {
+                "--filter" = "$winprocess_filter$"
+                "--warning" = "$winprocess_warning$"
+                "--critical" = "$winprocess_critical$"
+                "--compare" = {
+                        value = "$winprocess_compare$"
+                        required = false
+                }
+                "--first" = {
+                        value = "$winprocess_first$"
+                        required = false
+                }
+        }
+        vars.winprocess_compare = "le"
+        vars.winprocess_warning = 0
+        vars.winprocess_critical = 0
+}
+
+#############################################
+############### STORAGE LENOVO ##############
+#############################################
+object CheckCommand "check_storage_lenovo" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_storage_lenovo.py" ]
+
+        arguments = {
+                "--host" = "$storage_lenovo_host$"
+                "--controller" = {
+                        value = "$storage_lenovo_controller$"
+                        required = false
+                }
+                "--user" = {
+                        value = "$storage_lenovo_user$"
+                        required = false
+                }
+                "--password" = "$storage_lenovo_password$"
+                "--status" = "$storage_lenovo_status$"
+                "--file" = {
+                        value = "$storage_lenovo_file$"
+                        required = false
+                }
+                "--warning" = {
+			value = "$storage_lenovo_warning$"
+			required = false
+		}
+                "--critical" = {
+			value = "$storage_lenovo_critical$"
+			required = false
+		}
+        }
+	vars.storage_lenovo_host = "$address$"
+}
+
+#############################################
+############### STORAGE LENOVO ##############
+#############################################
+object CheckCommand "check_storage_v3700" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_storage_v3700.py" ]
+
+        arguments = {
+                "--host" = "$storage_v3700_host$"
+                "--name" = "$storage_v3700_name$"
+                "--user" = "$storage_v3700_user$"
+                "--keyfile" = "$storage_v3700_keyfile$"
+                "--status" = "$storage_v3700_status$"
+                "--file" = {
+                        value = "$storage_v3700_file$"
+                        required = false
+                }
+                "--warning" = {
+                        value = "$storage_v3700_warning$"
+                        required = false
+                }
+                "--critical" = {
+                        value = "$storage_v3700_critical$"
+                        required = false
+                }
+        }
+        vars.storage_v3700_host = "$address$"
+}
+# simple fetch version
+object CheckCommand "check_storage_v3700_fetch" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_storage_v3700_fetch.py" ]
+
+        arguments = {
+                "--name" = "$storage_v3700_name$"
+                "--status" = "$storage_v3700_status$"
+                "--file" = {
+                        value = "$storage_v3700_file$"
+                        required = false
+                }
+                "--warning" = {
+                        value = "$storage_v3700_warning$"
+                        required = false
+                }
+                "--critical" = {
+                        value = "$storage_v3700_critical$"
+                        required = false
+                }
+        }
+}
+
+
+####################################################
+################ Sophos Antivirus  #################
+####################################################
+#command[check_sophos]=cscript.exe //NoLogo "C:\Program Files\NRPE_NT_Perf\bin\check_sophos.vbs" /w:0 /c:1
+
+object CheckCommand "check_sophos" {
+    import "plugin-check-command"
+
+    command = [ "c:/windows/system32/cscript.exe" ]
+
+    arguments = {
+        "//NoLogo" = {
+            required = true
+            order = -4
+        }
+        "Scriptfile" = {
+            value = SysconfDir + "/icinga2/scripts/check_sophos.vbs"
+            required = true
+            skip_key = true
+            order = -3
+        }
+        "/w" = {
+            description = "(required): warning offset in days"
+            value = "/w:$av_warn$"
+            required = false
+            skip_key = true
+            order = -2
+        }
+        "/c" = {
+            description = "(required): critical offset in days"
+            value = "/c:$av_crit$"
+            required = false
+            skip_key = true
+            order = -1
+        }
+    }
+
+    vars.av_warn = "0"
+    vars.av_crit = "1"
+}
+
+###################################################
+################ Sophos Safeguard #################
+###################################################
+object CheckCommand "check_safeguard" {
+    import "plugin-check-command"
+
+    command = [ "c:/windows/system32/cscript.exe" ]
+
+    arguments = {
+        "//NoLogo" = {
+            required = true
+            order = -2
+        }
+        "Scriptfile" = {
+            value = SysconfDir + "/icinga2/scripts/check_safeguard.vbs"
+            required = true
+            skip_key = true
+            order = -1
+        }
+        "Hostname" = {
+            description = "(optional): hostname "
+            value = "$safeguard_hostname$"
+            required = false
+            skip_key = true
+            order = 1
+        }
+    }
+    # safeguard_hostname defaults to the machine hostname, determined by the check itself
+    # costumize it by changing vars.safeguard_hostname if needed (note: the check must be run inside the server)
+}
+
+###################################################
+############### ACTIVE DIRECTORY ##################
+###################################################
+object CheckCommand "check_ad" {
+    import "plugin-check-command"
+
+    command = [ "c:/windows/system32/cscript.exe" ]
+
+    arguments = {
+        "//NoLogo" = {
+            required = true
+            order = -2
+        }
+        "Scriptfile" = {
+            value = SysconfDir + "/icinga2/scripts/Check_AD.vbs"
+            required = true
+            skip_key = true
+            order = -1
+        }
+        "tests" = {
+            description = "Tests to perform by DCDIAG, comma separated. Default: services,replications,advertising,fsmocheck,ridmanager,machineaccount,dns"
+            value = "/test:$check_ad_tests$"
+            required = false
+            skip_key = true
+            order = 1
+        }
+    }
+    vars.check_ad_tests = "services,replications,advertising,fsmocheck,ridmanager,machineaccount,dns"
+}
+
+###################################################
+################## WINDOWS TIME ###################
+###################################################
+object CheckCommand "check_windows_time" {
+    import "plugin-check-command"
+
+    command = [ SysconfDir + "/icinga2/scripts/check_windows_time.bat" ]
+  
+    arguments = {
+
+        "server" = {
+            description = "(required): server to check"
+            value = "$ntp_address$"
+            required = false
+            skip_key = true
+            order = -3
+        }
+        "/w" = {
+            description = "(required): warning offset in seconds"
+            value = "$ntp_warn$"
+            required = false
+            skip_key = true
+            order = -2
+        }
+        "/c" = {
+            description = "(required): critical offset in secondss"
+            value = "$ntp_crit$"
+            required = false
+            skip_key = true
+            order = -1
+        }
+    }
+    vars.ntp_address = "172.16.100.224"
+    vars.ntp_warn = "10"
+    vars.ntp_crit = "15"
+}
+
+#####################################################
+###################### BACULA #######################
+#####################################################
+
+object CheckCommand "check_bacula_lastbackup" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_bacula_lastbackup.pl" ]
+
+        arguments = {
+                "-client" = {
+			value = "$bacula_lastbackup_client$"
+			required = true
+		}
+                "-warningAge" = {
+                        value = "$bacula_lastbackup_warningAge$"
+                        required = true
+                }
+                "-criticalAge" = {
+                        value = "$bacula_lastbackup_criticalAge$"
+                        required = true
+                }
+                "-level" = {
+                        value = "$bacula_lastbackup_level$"
+                        required = true
+                }
+        }
+}
+
+
+object CheckCommand "check_bacula_log" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_bacula_log.pl" ]
+
+        arguments = {
+                "-F" = {
+                        value = "$bacula_logfile$"
+                        required = true
+                }
+        }
+}
+
+#####################################################
+###################### HAPROXY ######################
+#####################################################
+
+object CheckCommand "haproxy_stats" {
+        import "plugin-check-command"
+        command = [ "/usr/bin/sudo", PluginDir + "/check_haproxy_stats.pl" ]
+
+        arguments = {
+                "--critical" = {
+                        value = "$haproxy_stats_critical$"
+                        description = "Set critical threshold for sessions number (chacks current number of sessions against session limit, if enforced) to the specified percentage. If no session limit (slim) was specified for the given proxy, this option has no effect."
+                }
+                "--ignore-maint" = {
+                        set_if = "$haproxy_ignore_maint$"
+                        description = "Assume servers in MAINT state to be ok."
+                }
+                "--ignore-regex" = {
+                        value = "$haproxy_ignore_regex$"
+                        description = "Ignore servers that match the given regex."
+                }
+                "--ignore-drain" = {
+                        set_if = "$haproxy_ignore_drain$"
+                        description = "Assume servers in DRAIN state to be ok."
+                }
+                "--proxy" = {
+                        value = "$haproxy_stats_proxy$"
+                        description = "Check only named proxies, not every one. Use comma to separate proxies in list."
+                }
+                "--no-proxy" = {
+                        value = "$haproxy_no_proxy$"
+                        description = "Do not check named proxies. Use comma to separate proxies in list."
+                }
+                "-s" = {
+                        value = "$haproxy_stats_socket$"
+                        description = "Use named UNIX socket instead of default (/var/run/haproxy.sock)"
+                }
+                "--url" = {
+                        value = "$haproxy_url$"
+                        description = "Use HTTP URL instead of socket."
+                }
+                "--username" = {
+                        value = "$haproxy_username$"
+                        description = "Username for the HTTP URL"
+                }
+                "--password" = {
+                        value = "$haproxy_password$"
+                        description = "Password for the HTTP URL"
+                }
+                "--warning" = {
+                        value = "$haproxy_stats_warning$"
+                        description = "Set warning threshold for sessions number to the specified percentage (see haproxy_stats_critical)"
+                }
+        }
+}
+
+#####################################################
+################ WINDOWS FILE DATE ##################
+#####################################################
+
+object CheckCommand "check_windows_file_date" {
+    import "plugin-check-command"
+
+    command = [ "c:/windows/system32/cscript.exe" ]
+
+    arguments = {
+        "//NoLogo" = {
+            required = true
+            order = -5
+        }
+        "Scriptfile" = {
+            value = SysconfDir + "/icinga2/scripts/check_file_date.vbs"
+            required = true
+            skip_key = true
+            order = -4
+        }
+        "file_date_path" = {
+            description = "(required): file path"
+            value = "$file_date_path$"
+            required = true
+            skip_key = true
+            order = -3
+        }
+        "file_date_warn" = {
+            description = "(required): warning age in minutes"
+            value = "$file_date_warn$"
+            required = true
+            skip_key = true
+            order = -2
+        }
+        "file_date_crit" = {
+            description = "(required): critical age in minutes"
+            value = "$file_date_crit$"
+            required = true
+            skip_key = true
+            order = -1
+        }
+        "file_date_content_regexp" = {
+            description = "(optional): content regular expression to check"
+            value = "$file_date_content_regexp$"
+            required = false
+            skip_key = true
+            order = 0
+        }
+        "file_date_ignore_case" = {
+            description = "(optional): 1 to ignore case when checking content"
+            value = "$file_date_ignore_case$"
+            required = false
+            skip_key = true
+            set_if = {{
+                return (len(macro("$file_date_content_regexp$")) > 0)
+            }}
+            order = 1
+        }
+    }
+
+    vars.file_date_warn = "1470"
+    vars.file_date_crit = "2910"
+}
+
+#####################################################
+#################### FILECOUNT ######################
+#####################################################
+
+object CheckCommand "check_file_count" {
+    import "plugin-check-command"
+
+    command = [ PluginDir + "/check_file_count" ]
+
+    arguments = {
+        "-t" = {
+            description = "type to check (file|dir|all)"
+            required = true
+            skip_key = true
+            order = -6
+            value = "-t=" + "$file_count_type$"
+        }
+        "-s" = {
+            description = "include subdirectories (yes|no)"
+            required = true
+            skip_key = true
+            order = -5
+            value = "-s=" + "$file_count_subdirectories$"
+        }
+        "-wt" = {
+            description = "warning type (low|high|equal)"
+            required = true
+            skip_key = true
+            order = -4
+            value = "-wt=" + "$file_count_warning_type$"
+        }
+        "-w" = {
+            description = "warning amount (dependent on warning_type)"
+            required = true
+            order = -3
+            value = "$file_count_warn$"
+        }
+        "-c" = {
+            description = "critical amount (dependent on warning_type)"
+            required = true
+            order = -2
+            value = "$file_count_crit$"
+        }
+        "-p" = {
+            description = "show performance data (yes|no)"
+            required = true
+            skip_key = true
+            order = -1
+            value = "-p=" + "$file_count_performance_data$"
+        }
+        "directory_to_check" = {
+            description = "directory to check"
+            required = true
+            skip_key = true
+            order = 0
+            value = "$file_count_directory_to_check$"
+        }
+    }
+
+    vars.file_count_type = "all"
+    vars.file_count_subdirectories = "yes"
+    vars.file_count_warning_type = "high"
+    vars.file_count_warn = "50"
+    vars.file_count_crit = "100"
+    vars.file_count_performance_data = "yes"
+    # no defaults but mandatory: vars.file_count_directory_to_check
+}
+
+####################################################################################
+################### BATCHS AS400 (especifico VIA Consulting) #######################
+####################################################################################
+object CheckCommand "check_as400_wrkqbatch_jobs" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_as400_wrkqbatch_jobs.pl" ]
+
+	arguments = {
+		"-d" = {
+			value = "$as400_wrkqbatch_hostname$"
+			description = "DSN name, defined on odbc.ini (mandatory)"
+			required = true
+		}
+		"-u" = {
+			value = "$as400_wrkqbatch_username$"
+			description = "Username used to connect IBMi (mandatory)"
+			required = true
+		}
+		"-p" = {
+			value = "$as400_wrkqbatch_password$"
+			description = "Password used to connect IBMi (mandatory)"
+			required = true
+		}
+		"-s" = {
+			value = "$as400_wrkqbatch_status$"
+			description = "Check for jobs with certain status, defaults to MSGW"
+		}
+		"-e" = {
+			value = "$as400_wrkqbatch_enviroment$"
+			description = "Specify job environment (e.g.: BTL); this is nothing more than a prefix for each job's name; if you specify this parameter, jobs (in the file given with as400_wrkqbatch_file or given with as400_wrkqbatch_jobs) must be like: 10D00I ; if you ommit this parameter, jobs must be like: BTL10D00I ; with as400_wrkqbatch_check_all, all jobs beginning with \"name\" are checked"
+
+		}
+		"-j" = {
+			value = "$as400_wrkqbatch_jobs$"
+			description = "Job to check (can be repeated multiple times, mandatory unless one of as400_wrkqbatch_check_all or as400_wrkqbatch_file is given); E.g. (if as400_wrkqbatch_enviroment is not given): 10D00I ; E.g. (if as400_wrkqbatch_enviroment is given): BTL10D00I"
+			repeat_key = true
+		}
+		"-f" = {
+			value = "$as400_wrkqbatch_file$"
+			description = "Path to file with jobs to check (mandatory unless one of as400_wrkqbatch_check_all or as400_wrkqbatch_jobs is given)"
+		}
+       		"-a" = {
+			set_if = "$as400_wrkqbatch_check_all$"
+			description = "Check all jobs (cannot be used at the same time as as400_wrkqbatch_file or as400_wrkqbatch_jobs)"
+		}
+	}
+
+	vars.as400_wrkqbatch_hostname = "$address$"
+}
+
+######################################################
+################## AS400 MSGQINFO ####################
+######################################################
+object CheckCommand "check_as400_msgqinfo" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_as400_msgqinfo.pl" ]
+
+        arguments = {
+                "-d" = {
+			value = "$as400_msgqinfo_dsn$"
+			description = "DSN name, defined on odbc.ini"
+			required = true
+		}
+		"-u" = {
+			value = "$as400_username$"
+			description = "Username used to connect IBMi"
+			required = true
+		}
+		"-p" = {
+			value = "$as400_password$"
+			description = "Password used to connect IBMi"
+			required = true
+		}
+		"-q" = {
+			value = "$as400_msgqinfo_queue$"
+			repeat_key = true
+			description = "Queue name(s) to check, may be repeated to specify multiple queues. Example: QSYSMSG"
+		}
+		"as400_msgqinfo_message_id" = {
+			key = "--message-id"
+			value = "$as400_msgqinfo_message_id$"
+			repeat_key = true
+			order = 30
+			description = "(optional) Filter by message_id field, may be repeated to specify multiple message ids. Example (for excluding messages with ID CPA0701 and all messages beginning with RPG): -m '!CPA0701' -m '!%RPG%' . Another example (for including messages starting with RPG but excluding all that end with 2312 ): -m '%RPG%' -m '!%%2312'"
+		}
+		"as400_msgqinfo_message_id_append" = {
+			key = "--message-id"
+			value = "$as400_msgqinfo_message_id_append$"
+			repeat_key = true
+			description = "(optional) Additional values to append to as400_msgqinfo_message_id while preserving any defaults it may have from parent template(s)"
+			order = 31
+		}
+		"--from-program" = {
+			value = "$as400_msgqinfo_from_program$"
+			repeat_key = true
+			description = "(optional) Filter by from_program, may be repeated to specify multiple programs. Example: QWCATARE QRUSDMSG (multiple times) to see most important hardware issues"
+		}
+		"--show-from-program" = {
+			set_if = "$as400_msgqinfo_show_from_program$"
+			description = "(optional) Show from_program value along with each message text"
+		}
+		"--from-user" = {
+			value = "$as400_msgqinfo_from_user$"
+			repeat_key = true
+			description = "(optional) Filter by from_user field, may be repeated to specify multiple users"
+		}
+		"--show-from-user" = {
+			set_if = "$as400_msgqinfo_show_from_user$"
+			description = "(optional) Show from_user value along with each message text"
+		}
+		"--from-job" = {
+			value = "$as400_msgqinfo_from_job$"
+			repeat_key = true
+			description = "(optional) Filter by from_job field, may be repeated to specify multiple job names"
+		}
+		"--show-from-job" = {
+			set_if = "$as400_msgqinfo_show_from_job$"
+			description = "(optional) Show from_job value along with each message text"
+		}
+		"--min-severity" = {
+			value = "$as400_msgqinfo_min_severity$"
+			description = "(optional) Filter by minimum message severity"
+		}
+		"--max-severity" = {
+			value = "$as400_msgqinfo_max_severity$"
+			description = "(optional) Filter by maximum message severity"
+		}
+		"--show-severity" = {
+			set_if = "$as400_msgqinfo_show_severity$"
+			description = "(optional) Show severity value along with each message text"
+		}
+		"--message-file-name" = {
+			value = "$as400_msgqinfo_message_file_name$"
+			repeat_key = true
+			description = "(optional) Filter by message_file_name field, may be repeated to specify multiple message file names"
+		}
+		"--show-message-file-name" = {
+			set_if = "$as400_msgqinfo_show_message_file_name$"
+			description = "(optional) Show message_file_name value along with each message text"
+		}
+		"--min-timestamp" = {
+			value = "$as400_msgqinfo_min_timestamp$"
+			description = "(optional) Filter by minimum timestamp; can be given as a negative value in which case it must have a time unit (d, h, m or s) and will be considered relative to current timestamp; can also be fixed timestamps (see as400_msgqinfo_timestamp_format); by default the comparison is greater or equal, unless if the value begins with a > sign"
+		}
+		"--max-timestamp" = {
+			value = "$as400_msgqinfo_max_timestamp$"
+			description = "(optional) Filter by maximum timestamp; can be given as a negative value in which case it must have a time unit (d, h, m or s) and will be considered relative to current timestamp; can also be fixed timestamps (see as400_msgqinfo_timestamp_format); by default the comparison is less or equal, unless if the value begins with a < sign"
+		}
+		"--timestamp-format" = {
+			value = "$as400_msgqinfo_timestamp_format$"
+			description = "(optional) Timestamp format to pass to to DB2 TIMESTAMP_FORMAT and VARCHAR_FORMAT functions, default: 'YYYY-MM-DD HH24:MI:SS.FF'"
+		}
+		"--show-timestamps" = {
+			set_if = "$as400_msgqinfo_show_timestamps$"
+			description = "(optional) Show timestamp value along with each message text (disables count grouping)"
+		}
+		"--show-timestamps-extra-newlines" = {
+			set_if = "$as400_msgqinfo_show_timestamps_extra_newlines$"
+			description = "(optional) Same as --show-timestamps but add an extra newline between each entry (for better readability on certain pager notifications)"
+		}
+		"--type" = {
+			value = "$as400_msgqinfo_type$"
+			repeat_key = true
+			description = "(optional) Filter by type, may be repeated to specify multiple types; cannot be used with --unreplied"
+		}
+		"--show-type" = {
+			set_if = "$as400_msgqinfo_show_type$"
+			description = "(optional) Show type value along with each message text"
+		}
+		"--unreplied" = {
+			set_if = "$as400_msgqinfo_unreplied$"
+			description = "(optional) Consider only INQUIRY message types without a corresponding REPLY associated message; cannot be used with -t/--type"
+		}
+		"-i" = {
+			value = "$as400_msgqinfo_include$"
+			repeat_key = true
+			description = "(optional) Include only messages that match the specified SQL LIKE pattern. May be repeated to specify multiple patterns. Example: %hardware%"
+		}
+		"-e" = {
+			value = "$as400_msgqinfo_exclude$"
+			repeat_key = true
+			description = "(optional) Exclude messages that match the specified SQL LIKE pattern. May be repeated to specify multiple patterns. Example: %hardware%"
+		}
+		"-w" = {
+			value = "$as400_msgqinfo_warning$"
+			description = "Warning minimum value. Default: 0 (disabled)"
+		}
+		"-c" = {
+			value = "$as400_msgqinfo_critical$"
+			description = "Critical minimum value. Default: 1"
+		}
+		"--verbose" = {
+			set_if = "$as400_msgqinfo_verbose$"
+			description = "(optional) Produce a more verbose status message with details of the selected criteria"
+		}
+	}
+	vars.as400_msgqinfo_dsn = "$address$"
+}
+
+######################################################
+################## SAN Switch ########################
+######################################################
+
+object CheckCommand "check_switch_fc" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_fibrealliance.sh" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$hostaddress$"
+                        required = true
+                }
+                "-C" = {
+                        value = "$community$"
+                        required = true
+                }
+		"-T" = {
+			value = "$type$"
+			required = true
+		}
+        }
+
+	vars.hostaddress="$address$"
+}
+
+######################################################
+################## JBOSS JMX ########################
+######################################################
+
+object CheckCommand "check_jmx" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_jmx" ]
+
+        arguments = {
+                "-U" = {
+                        value = "$service_url$"
+                        required = true
+                }
+                "-O" = {
+                        value = "$object_name$"
+                        required = true
+                }
+                "-A" = {
+                        value = "$attribute_name$"
+                        required = true
+                }
+		"-K" = {
+                        value = "$compound_key$"
+                        required = false
+                }
+		"-w" = {
+                        value = "$warn_threshold$"
+                        required = false
+                }
+		"-c" = {
+                        value = "$crit_threshold$"
+                        required = false
+                }
+		"-o" = {
+                        value = "$operation_name$"
+                        required = false
+                }
+		"-u" = {
+                        value = "$units$"
+                        required = false
+                }
+		"--username" = {
+                        value = "$username$"
+                        required = false
+                }
+		"--password" = {
+                        value = "$password$"
+                        required = false
+                }
+        }
+
+}
+
+#####################################################
+###################### SSL_CERT #####################
+#####################################################
+
+# SAMPLE: /usr/lib64/nagios/plugins/check_ssl_cert -H yammi.pt -w 45 -c 7 -i "GoDaddy.com, Inc." -n "yammi.pt"
+object CheckCommand "check_ssl_cert" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_ssl_cert" ]
+        arguments = {
+                "-H" = {
+                        value = "$ssl_cert_host$"
+                        required = true
+                }
+                "-w" = {
+                        value = "$ssl_cert_warning$"
+                        required = true
+                }
+                "-c" = {
+                        value = "$ssl_cert_critical$"
+                        required = true
+                }
+                "-i" = {
+                        value = "$ssl_cert_issuer$"
+                        required = false
+                }
+                "-n" = {
+                        value = "$ssl_cert_cn$"
+                        required = false
+		}
+        }
+
+	vars.ssl_cert_warning = 45
+	vars.ssl_cert_critical = 7
+
+}
+
+#####################################################
+###################### MAILQUEUE ####################
+#####################################################
+
+object CheckCommand "check_mailqueue" {
+        import "plugin-check-command"
+        command = [ "/usr/bin/sudo", "/etc/scripts/postqueue_nagios.sh" ]
+}
+
+#####################################################
+################# SUSPICIOUS EMAILS #################
+#####################################################
+
+object CheckCommand "check_suspicious_emails" {
+	import "plugin-check-command"
+	command = [ "/usr/bin/sudo", PluginDir + "/check_suspicious_emails.pl" ]
+	arguments = {
+		"-t" = {
+			value = "$suspicious_emails_timesecs_ago$"
+			required = true
+		}
+		"-w" = {
+			value = "$suspicious_emails_warning$"
+			required = true
+		}
+		"-c" = {
+			value = "$suspicious_emails_critical$"
+			required = true
+		}
+		"-p" = {
+			value = "$suspicious_emails_recipient_regexp$"
+			required = true
+		}
+		"-m" = {
+			value = "$suspicious_emails_match_indexes$"
+			required = false
+		}
+		"-e" = {
+			value = "$suspicious_emails_exclude_regexp$"
+			required = false
+		}
+		"-s" = {
+			value = "$suspicious_emails_subsystem$"
+			required = false
+		}
+		"-P" = {
+			value = "$suspicious_emails_dynamic_perfdata$"
+			required = false
+		}
+		"logfile" = {
+			skip_key = true
+			value = "$suspicious_emails_logfile$"
+			required = true
+		}
+	}
+
+	vars.suspicious_emails_timesecs_ago = 3600
+	vars.suspicious_emails_warning = 10
+	vars.suspicious_emails_critical = 20
+	vars.suspicious_emails_recipient_regexp = "@((.+.(cn|ru))|((aol)\\.com))$$"
+	vars.suspicious_emails_match_indexes = "3,4"
+	vars.suspicious_emails_subsystem = "postfix"
+	vars.suspicious_emails_logfile = "/var/log/maillog"
+}
+
+#####################################################
+###################### SMBSHARES ####################
+#####################################################
+
+object CheckCommand "check_smbshares" {
+	import "plugin-check-command"
+	timeout = 30m
+	command = [ "/usr/bin/sudo", PluginDir + "/check_smbshares.pl" ]
+	arguments = {
+		"-t" = {
+			value = "$smbshares_target$"
+			required = true
+		}
+	}
+}
+
+######################################################
+##################### JSON ###########################
+######################################################
+object CheckCommand "check_json" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_json.pl" ]
+
+        arguments = {
+                "--url" =  {
+                        value = "$json_url$"
+                        required = true
+                }
+                "--attributes" = {
+                        value = "$json_attributes$"
+                        required = true
+                }
+                "--outputvars" = {
+                        value = "$json_outputvars$"
+                        required = false
+                }
+                "--perfvars" = {
+                        value = "$json_perfvars$"
+                        required = false
+                }
+                "--warning" = {
+                        value = "$json_warning$"
+                        required = false
+                }
+                "--critical" = {
+                        value = "$json_critical$"
+                        required = false
+                }
+                "--user" = {
+                        value = "$json_user$"
+                        required = false
+                }
+                "--password" = {
+                        value = "$json_password$"
+                        required = false
+                }
+                "--realm" = {
+                        value = "$json_realm$"
+                        required = false
+                }
+        }
+}
+
+#############################################
+############## STORAGE MSA2012 ##############
+#############################################
+# ./check_msa [-u <username>] [-p <password>] -h <hostname> -t <type of check>
+
+object CheckCommand "check_msa2012" {
+       import "plugin-check-command"
+       command = [ PluginDir + "/check_msa2012i_g1" ]
+
+       arguments = {
+               "-u" = {
+                       value = "$storage_msa2012_username$"
+                       required = false
+               }
+               "-p" = {
+                       value = "$storage_msa2012_password$"
+                       required = false
+               }
+               "-h" = {
+                       value = "$storage_msa2012_hostname$"
+                       required = true
+               }
+               "-t" = {
+                       value = "$storage_msa2012_check$"
+                       required = true
+               }
+       }
+       vars.storage_msa2012_hostname = "$address$"
+}
+
+object CheckCommand "check_container_mfm_webservices" {
+  import "plugin-check-command"
+  command = [ "/etc/scripts/check-mfm-webservices.sh" ]
+}
+
+#############################################
+################# SSH EVENT #################
+#############################################
+/* pass event commands through ssh */
+object EventCommand "event_by_ssh" {
+  command = [ PluginDir + "/check_by_ssh" ]
+
+  arguments = {
+    "-H" = "$event_by_ssh_address$"
+    "-p" = "$event_by_ssh_port$"
+    "-C" = "$event_by_ssh_command$"
+    "-l" = "$event_by_ssh_logname$"
+    "-i" = "$event_by_ssh_identity$"
+    "-q" = {
+      set_if = "$event_by_ssh_quiet$"
+    }
+    "-w" = "$event_by_ssh_warn$"
+    "-c" = "$event_by_ssh_crit$"
+    "-t" = "$event_by_ssh_timeout$"
+  }
+
+  vars.event_by_ssh_address = "$address$"
+  vars.event_by_ssh_quiet = false
+}
+object EventCommand "event_by_ssh_restart_service" {
+  import "event_by_ssh"
+
+  //only restart the daemon if state > 0 (not-ok)
+  //requires sudo permissions for the icinga user
+  vars.event_by_ssh_command = "test $service.state_id$ -gt 1 && sudo /etc/init.d/$event_by_ssh_service$ restart"
+}
+
+object EventCommand "restart_docker" {
+        //import "plugin-event-command"
+        command = [ "/usr/bin/sudo", "/etc/scripts/restart_docker.sh" ]
+
+        arguments = {
+		"docker_name" = {
+                        value = "$docker_name$"
+			skip_key = true
+	 	}
+		"state_id" = {
+                        value = "$service.state_id$"
+			skip_key = true
+	 	}
+        }
+}
+
+#############################################
+########### Docker Check HTTP ###############
+#############################################
+
+object CheckCommand "check_docker_http" {
+	import "plugin-check-command"
+	command = [ "docker-check-http.sh" ]
+	command = [ PluginDir + "/docker-check-http.sh" ]
+	# docker-check-http.sh usage: docker-check-http.sh -c CONTAINER -h HOST -p PORT -t TIMEOUT -u "URI"
+        arguments = {
+                "-c" = {
+                        value = "$docker_http_container$"
+                        required = true
+                }
+                "-h" = {
+                        value = "$docker_http_host$"
+                        required = true
+                }
+                "-p" = {
+                        value = "$docker_http_port$"
+                        required = true
+                }
+                "-t" = {
+                        value = "$docker_http_timeout$"
+                        required = true
+                }
+                "-u" = {
+                        value = "$docker_http_uri$"
+                        required = false
+                }
+        }
+
+        vars.docker_http_timeout = 10
+}
+
+##############################################
+################## QNAP ######################
+##############################################
+
+object CheckCommand "check_qnap" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_qnap3" ]
+
+	arguments = {
+                "-h" = {
+                        value = "$qnap_host$"
+			skip_key = true
+			order = -5
+                }
+                "-s" = {
+                        value = "$qnap_community$"
+			skip_key = true
+			order = -4
+                }
+                "-m" = {
+                        value = "$qnap_command$"
+                	skip_key = true
+			order = -3
+		}
+                "-w" = {
+                        value = "$qnap_warning$"
+			skip_key = true
+			order = -2
+                }
+                "-c" = {
+                        value = "$qnap_critical$"
+			skip_key = true
+			order = -1
+                }
+        }
+
+}
+
+#####################################################
+#################### CHECK_ISCSI ####################
+#####################################################
+
+# SAMPLE: /usr/lib64/nagios/plugins/check_iscsi  -q iqn.2004-04.com.qnap:ts-469u:iscsi.evtlviac4002.e8501e  -c 1
+object CheckCommand "check_iscsi" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_iscsi" ]
+        arguments = {
+                "-i" = {
+                        value = "$iscsi_ip$"
+                        required = false
+                }
+                "-q" = {
+                        value = "$iscsi_iqn$"
+                        required = false
+                }
+                "-c" = {
+                        value = "$iscsi_count$"
+                        required = false
+                }
+        }
+}
+
+#######################################################
+###################### UPS EATON  #####################
+#######################################################
+
+object CheckCommand "check_ups_eaton" {
+        import "plugin-check-command"
+
+        command = [ PluginDir + "/check_snmp_mgeeaton_ups.pl" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$ups_host$"
+                }
+                "-C" = {
+                        value = "$ups_community$"
+                }
+                "-O" = {
+                        value = "$ups_option$"
+                }
+        }
+}
+
+#######################################################
+################## VTL TAPES USAGE   ##################
+#######################################################
+
+object CheckCommand "check_quadstor_tapes" {
+        import "plugin-check-command"
+
+        command = [ "/usr/bin/sudo", PluginDir + "/check_quadstor_tapes.pl" ]
+
+        arguments = {
+                "-n" = {
+                        value = "$quadstor_vtlname$"
+                }
+                "-w" = {
+                        value = "$quadstor_warn$"
+                }
+                "-c" = {
+                        value = "$quadstor_crit$"
+                }
+        }
+}
+
+#######################################################
+################## VTL DISK USAGE   ###################
+#######################################################
+
+object CheckCommand "check_quadstor_disk" {
+        import "plugin-check-command"
+
+        command = [ "/usr/bin/sudo", PluginDir + "/check_quadstor_disk.pl" ]
+
+        arguments = {
+                "-n" = {
+                        value = "$quadstor_disk_name$"
+                }
+                "-w" = {
+                        value = "$quadstor_disk_warn$"
+                }
+                "-c" = {
+                        value = "$quadstor_disk_crit$"
+                }
+        }
+}
+
+#######################################################
+####################### CHECK FS  #####################
+#######################################################
+
+object CheckCommand "check_fs" {
+        import "plugin-check-command"
+
+        command = [ PluginDir + "/check_fs.pl" ]
+
+        arguments = {
+        }
+}
+
+#######################################################
+###################### BAREOS #########################
+#https://github.com/widhalmt/check_bareos
+#######################################################
+
+template CheckCommand "bareos-command" {
+	import "plugin-check-command"
+	import "ipv4-or-ipv6"
+
+	command = [ PluginDir + "/check_bareos.py" ]
+
+	arguments = {
+		"--databasename" = {
+                        value = "$bareos_databasename$"
+                        description = "The database name"
+                        order = -6
+                }
+		"--database" = {
+			value = "$bareos_database$"
+			description = "The database kind for the database connection (m=mysql, p=psql) (default: m)"
+			order = -5
+		}
+		"--user" = {
+			value = "$bareos_user$"
+			description = "User name for the database connections (default: bareos)"
+			order = -4
+		}
+		"--password" = {
+			value = "$bareos_password$"
+			description = "Password for the database connections (default: bareos)"
+			order = -3
+		}
+		"--Host" = {
+			value = "$bareos_host$"
+			description = "Database host"
+			order = -2
+		}
+	}
+
+	vars.bareos_database = "m"
+	vars.bareos_user = "bareos"
+	vars.bareos_password = "bareos"
+	vars.bareos_host = "$check_address$"
+}
+
+object CheckCommand "bareos-job" {
+	import "bareos-command"
+
+	arguments += {
+		"job" = {
+			description = "Specific checks on a job"
+			order = -1
+		}
+		"--checkJobs" = {
+			set_if = "$bareos_checkjobs$"
+			description = "Check how many jobs are in a specific state (default: queued)"
+		}
+		"--checkJob" = {
+			set_if = "$bareos_checkjob$"
+			description = "Check the state of a specific job (default: queued)"
+		}
+		"--runTimeJobs" = {
+			set_if = "$bareos_runtimejobs$"
+			description = "Check if a backup runs longer then n day"
+		}
+		"--name" = {
+			value = "$bareos_jobname$"
+			description = "Name of the job"
+		}
+		"--time" = {
+			value = "$bareos_time$"
+			description = "Time in days (default: 7 days)"
+		}
+		"--unit" = {
+			value = "$bareos_unit$"
+			description = "Display unit"
+		}
+		"--warning" = {
+			value = "$bareos_warning$"
+			description = "Warning value"
+		}
+		"--critical" = {
+			value = "$bareos_critical$"
+			description = "Critical value"
+		}
+		"--state" = {
+			value = "$bareos_state$"
+			description = "T=Completed, C=Queued, R=Running, E=Terminated with Errors, f=Fatal error, A=Canceled by user (default: C)"
+		}
+		"--full" = {
+			set_if = "$bareos_full$"
+			description = "Backup kind full"
+		}
+		"--inc" = {
+			set_if = "$bareos_inc$"
+			description = "Backup kind inc"
+		}
+		"--diff" = {
+			set_if = "$bareos_diff$"
+			description = "Backup kind diff"
+		}
+	}
+}
+
+object CheckCommand "bareos-tape" {
+        import "bareos-command"
+
+        arguments += {
+		"tape" = {
+			description = "Specific checks on a tapes"
+			order = -1
+		}
+		"--emptyTapes" = {
+			set_if = "$bareos_emptytapes$"
+			description = "Count empty tapes in the storage (Status Purged/Expired)"
+		}
+		"--tapesInStorage" = {
+			set_if = "$bareos_tapesinstorage$"
+			description = "Count how much tapes are in the storage"
+		}
+		"--expiredTapes" = {
+			set_if = "$bareos_expiredtapes$"
+			description = "Count how much tapes are expired"
+		}
+		"--willExpire" = {
+			set_if = "$bareos_willexpire$"
+			description = "Count how much tapes are will expire in n day"
+		}
+		"--replaceTapes" = {
+			set_if = "$bareos_replacetapes$"
+			description = "Count how much tapes should by replaced"
+		}
+		"--warning" = {
+			value = "$bareos_warning$"
+			description = "Warning value"
+		}
+		"--critical" = {
+			value = "$bareos_critical$"
+			description = "Critical value"
+		}
+		"--mounts" = {
+			value = "$bareos_mounts$"
+			description = "Amout of allowed mounts for a tape (used for replace tapes)"
+		}
+		"--time" = {
+			value = "$bareos_time$"
+			description = "Time in days (default: 7 days)"
+		}
+	}
+}
+
+object CheckCommand "bareos-status" {
+        import "bareos-command"
+
+        arguments += {
+		"status" = {
+			key = "status"
+			description = "Specific status informations"
+			order = -1
+		}
+		"--totalBackupsSize" = {
+			set_if = "$bareos_totalbackupssize$"
+			description = "The size of all backups in the database (use time and kind for mor restrictions)"
+		}
+		"--emptyBackups" = {
+			set_if = "$bareos_emptybackups$"
+			description = "Check if a successful backup have 0 bytes (only wise for full backups)"
+		}
+		"--oversizedBackup" = {
+			set_if = "$bareos_oversizedbackup$"
+			description = "Check if a backup have more than n TB"
+		}
+		"--failedBackups" = {
+			set_if = "$bareos_failedbackups$"
+			description = "Check if a backup failed in the last n day"
+		}
+		"--full" = {
+			set_if = "$bareos_full$"
+			description = "Backup kind full"
+		}
+		"--inc" = {
+			set_if = "$bareos_inc$"
+			description = "Backup kind inc"
+		}
+		"--diff" = {
+			set_if = "$bareos_diff$"
+			description = "Backup kind diff"
+		}
+		"--time" = {
+			value = "$bareos_time$"
+			description = "Time in days"
+		}
+		"--warning" = {
+			value = "$bareos_warning$"
+			description = "Warning value (default: 5)"
+		}
+		"--critical" = {
+			value = "$bareos_critical$"
+			description = "Critical value (default: 10)"
+		}
+		"--size" = {
+			value = "$bareos_size$"
+			description = "Border value for oversized backups (default: 2)"
+		}
+		"--unit" = {
+			value = "$bareos_unit$"
+			description = "Display unit (default: TB)"
+		}
+        }
+}
+
+###############################################
+################## DHCP SCOPE #################
+###############################################
+
+object CheckCommand "check_snmp_dhcp" {
+        import "plugin-check-command"
+
+        command = [ PluginDir + "/check_snmp_dhcp.pl" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$dhcp_snmp_address$"
+                }
+                "-b" = {
+                        value = "$dhcp_snmp_backupaddress$"
+                }
+                "-p" = {
+                        value = "$dhcp_snmp_port$"
+                }
+                "-C" = {
+                        value = "$dhcp_snmp_community$"
+                }
+		"-w" = {
+                        value = "$dhcp_snmp_freeleases_warning$"
+                }
+		"-c" = {
+                        value = "$dhcp_snmp_freeleases_critical$"
+                }
+		"-P" = {
+                        value = "$dhcp_snmp_perfdata$"
+                }
+		"-i" = {
+                        value = "$dhcp_snmp_scope_include$"
+                }
+		"-x" = {
+                        value = "$dhcp_snmp_scope_exclude$"
+                }
+		"-t" = {
+                        value = "$dhcp_snmp_timeout$"
+                }
+        }
+}
+
+
+#############################################
+############ UPS_HEALTH  ###############
+##############################################
+
+object CheckCommand "check_ups_health" {
+     import "plugin-check-command"
+     command = [ PluginDir + "/check_ups_health" ]
+     timeout = 1m
+     arguments += {
+         "--authpassword" = {
+             description = "The authentication password for SNMPv3"
+             value = "$ups_authpassword$"
+         }
+         "--authprotocol" = {
+             description = "The authentication protocol for SNMPv3 (md5|sha)"
+             value = "$ups_authprotocol$"
+         }
+         "--blacklist" = {
+             description = "Blacklist some (missing/failed) components"
+             value = "$ups_blacklist$"
+         }
+         "--community" = {
+             description = "SNMP community of the server (SNMP v1/2 only)"
+             value = "$ups_community$"
+         }
+         "--contextengineid" = {
+             description = "The context engine id for SNMPv3 (10 to 64 hex characters)"
+             value = "$ups_contextengineid$"
+         }
+         "--contextname" = {                                                                                                                                                                 
+             description = "The context name for SNMPv3 (empty represents the default context)"                                                                                              
+             value = "$ups_contextname$"                                                                                                                                                     
+         }                                                                                                                                                                                   
+         "--critical" = {                                                                                                                                                                    
+             description = "The critical threshold"                                                                                                                                          
+             value = "$ups_critical$"                                                                                                                                                        
+         }                                                                                                                                                                                   
+         "--criticalx" = {                                                                                                                                                                   
+             description = "The extended critical thresholds"
+             value = "$ups_criticalx$"
+         }
+         "--domain" = {
+             description = "The transport domain to use (default: udp/ipv4, other possible values: udp6, udp/ipv6, tcp, tcp4, tcp/ipv4, tcp6, tcp/ipv6)"
+             value = "$ups_domain$"
+         }
+         "--hostname" = {
+             description = "Hostname or IP-address of the switch or router"
+             value = "$ups_hostname$"
+         }
+         "--lookback" = {
+             description = "The amount of time you want to look back when calculating average rates. Use it for mode interface-errors or interface-usage. Without --lookback the time between two runs of check_nwc_health is the base for calculations. If you want your checkresult to be based for example on the past hour, use --lookback 3600."
+             value = "$ups_lookback$"
+         }
+         "--mitigation" = {
+             description = "The parameter allows you to change a critical error to a warning."
+             set_if = "$ups_mitigation$"
+         }
+         "--mode" = {
+             description = "Which mode should be executed. A list of all available modes can be found in the plugin documentation"
+             value = "$ups_mode$"
+         }
+         "--morphperfdata" = {
+             description = "The parameter allows you to change performance data labels. It's a perl regexp and a substitution. --morphperfdata '(.*)ISATAP(.*)'='$1patasi$2'"
+             value = "$ups_morphperfdata$"
+         }
+         "--multiline" = {
+             description = "Multiline output"
+             set_if = "$ups_multiline$"
+         }
+         "--name" = {
+             description = "The name of an interface (ifDescr)"
+             value = "$ups_name$"
+         }
+         "--name2" = {
+             description = "The secondary name of a component"
+             value = "$ups_name2$"
+         }
+         "--name3" = {
+             description = "The tertiary name of a component"
+             value = "$ups_name3$"
+         }
+         "--offline" = {
+             description = "The maximum number of seconds since the last update of cache file before it is considered too old"
+             value = "$ups_offline$"
+         }
+         "--oids" = {
+             description = "A list of oids which are downloaded and written to a cache file. Use it together with --mode oidcache"
+             value = "$ups_oids$"
+         }
+         "--port" = {
+             description = "The SNMP port to use (default: 161)"
+             value = "$ups_port$"
+         }
+         "--privpassword" = {
+             description = "The password for authPriv security level"
+             value = "$ups_privpassword$"
+         }
+         "--privprotocol" = {
+             description = "The private protocol for SNMPv3(des|aes|aes128|3des|3desde)"
+             value = "$ups_privprotocol$"
+         }
+         "--protocol" = {
+             description = "The SNMP protocol to use (default: 2c, other possibilities: 1,3)"
+             value = "$ups_protocol$"
+         }
+         "--regexp" = {
+             description = "A flag indicating that --name is a regular expression"
+             set_if = "$ups_regexp$"
+         }
+         "--report" = {
+             description = "Can be used to shorten the output"
+             set_if = "$ups_report$"
+         }
+         "--servertype" = {
+             description = "The type of the network device: cisco (default). Use it if auto-detection is not possible"
+             value = "$ups_servertype$"
+         }
+         "--timeout" = {
+             description = "Seconds before plugin times out (default: 15)"
+             value = "$ups_timeout$"
+         }
+         "--units" = {
+             description = "One of %, B, KB, MB, GB, Bit, KBi, MBi, GBi. (used for e.g. mode interface-usage)"
+             value = "$ups_units$"
+         }
+         "--username" = {
+             description = "The securityName for the USM security model (SNMPv3 only)"
+             value = "$ups_username$"
+         }
+         "--warning" = {
+             description = "The warning threshold"
+             value = "$ups_warning$"
+         }
+         "--warningx" = {
+             description = "The extended warning thresholds"
+             value = "$ups_warningx$"
+         }
+         "--with-mymodules-dyn-dir" = {
+             description = "A directory where own extensions can be found"
+             value = "$ups_mymodules-dyn-dir$"
+         }
+     }
+     vars.ups_hostname = "$address$"
+     vars.ups_community = "$host.vars.community$"
+}
+
+#############################################
+########### PRINTER_HEALTH  ###############
+#############################################
+
+object CheckCommand "check_printer_health" {
+     import "plugin-check-command"
+     command = [ PluginDir + "/check_printer_health" ]
+     timeout = 1m
+     arguments += {
+         "--authpassword" = {
+             description = "The authentication password for SNMPv3"
+             value = "$printer_authpassword$"
+         }
+         "--authprotocol" = {
+             description = "The authentication protocol for SNMPv3 (md5|sha)"
+             value = "$printer_authprotocol$"
+         }
+         "--blacklist" = {
+             description = "Blacklist some (missing/failed) components"
+             value = "$printer_blacklist$"
+         }
+         "--community" = {
+             description = "SNMP community of the server (SNMP v1/2 only)"
+             value = "$printer_community$"
+         }
+         "--contextengineid" = {
+             description = "The context engine id for SNMPv3 (10 to 64 hex characters)"
+             value = "$printer_contextengineid$"
+         }
+         "--contextname" = {
+             description = "The context name for SNMPv3 (empty represents the default context)"
+             value = "$printer_contextname$"
+         }
+         "--critical" = {
+             description = "The critical threshold"
+             value = "$printer_critical$"
+         }
+         "--criticalx" = {
+             description = "The extended critical thresholds"
+             value = "$printer_criticalx$"
+         }
+         "--domain" = {
+             description = "The transport domain to use (default: udp/ipv4, other possible values: udp6, udp/ipv6, tcp, tcp4, tcp/ipv4, tcp6, tcp/ipv6)"
+             value = "$printer_domain$"
+         }
+         "--hostname" = {
+             description = "Hostname or IP-address of the switch or router"
+             value = "$printer_hostname$"
+         }
+         "--lookback" = {
+             description = "The amount of time you want to look back when calculating average rates. Use it for mode interface-errors or interface-usage. Without --lookback the time between two runs of check_nwc_health is the base for calculations. If you want your checkresult to be based for example on the past hour, use --lookback 3600."
+             value = "$printer_lookback$"
+         }
+         "--mitigation" = {
+             description = "The parameter allows you to change a critical error to a warning."
+             set_if = "$printer_mitigation$"
+         }
+         "--mode" = {
+             description = "Which mode should be executed. A list of all available modes can be found in the plugin documentation"
+             value = "$printer_mode$"
+         }
+         "--morphperfdata" = {
+             description = "The parameter allows you to change performance data labels. It's a perl regexp and a substitution. --morphperfdata '(.*)ISATAP(.*)'='$1patasi$2'"
+             value = "$printer_morphperfdata$"
+         }
+         "--multiline" = {
+             description = "Multiline output"
+             set_if = "$printer_multiline$"
+         }
+         "--name" = {
+             description = "The name of an interface (ifDescr)"
+             value = "$printer_name$"
+         }
+         "--name2" = {
+             description = "The secondary name of a component"
+             value = "$printer_name2$"
+         }
+         "--name3" = {
+             description = "The tertiary name of a component"
+             value = "$printer_name3$"
+         }
+         "--offline" = {
+             description = "The maximum number of seconds since the last update of cache file before it is considered too old"
+             value = "$printer_offline$"
+         }
+         "--oids" = {
+             description = "A list of oids which are downloaded and written to a cache file. Use it together with --mode oidcache"
+             value = "$printer_oids$"
+         }
+         "--port" = {
+             description = "The SNMP port to use (default: 161)"
+             value = "$printer_port$"
+         }
+         "--privpassword" = {
+             description = "The password for authPriv security level"
+             value = "$printer_privpassword$"
+         }
+         "--privprotocol" = {
+             description = "The private protocol for SNMPv3(des|aes|aes128|3des|3desde)"
+             value = "$printer_privprotocol$"
+         }
+         "--protocol" = {
+             description = "The SNMP protocol to use (default: 2c, other possibilities: 1,3)"
+             value = "$printer_protocol$"
+         }
+         "--regexp" = {
+             description = "A flag indicating that --name is a regular expression"
+             set_if = "$printer_regexp$"
+         }
+         "--report" = {
+             description = "Can be used to shorten the output"
+             set_if = "$printer_report$"
+         }
+         "--servertype" = {
+             description = "The type of the network device: cisco (default). Use it if auto-detection is not possible"
+             value = "$printer_servertype$"
+         }
+         "--timeout" = {
+             description = "Seconds before plugin times out (default: 15)"
+             value = "$printer_timeout$"
+         }
+         "--units" = {
+             description = "One of %, B, KB, MB, GB, Bit, KBi, MBi, GBi. (used for e.g. mode interface-usage)"
+             value = "$printer_units$"
+         }
+         "--username" = {
+             description = "The securityName for the USM security model (SNMPv3 only)"
+             value = "$printer_username$"
+         }
+         "--warning" = {
+             description = "The warning threshold"
+             value = "$printer_warning$"
+         }
+         "--warningx" = {
+             description = "The extended warning thresholds"
+             value = "$printer_warningx$"
+         }
+         "--with-mymodules-dyn-dir" = {
+             description = "A directory where own extensions can be found"
+             value = "$printer_mymodules-dyn-dir$"
+         }
+     }
+     vars.printer_hostname = "$address$"
+     vars.printer_community = "$host.vars.community$"
+}
+
+#######################################################
+####################### CHECK HTTP PROXY NTLM ##########
+########################################################
+
+object CheckCommand "check_http_proxy_ntlm" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_http_proxy_ntlm.sh" ]
+
+        arguments = {
+                "--proxyhost" = {
+                        value = "$http_proxy_ntlm_proxyaddress$"
+			description = "proxy host"
+			required = true
+                        skip_key = true
+                        order = -5
+                }
+                "--proxyport" = {
+                        value = "$http_proxy_ntlm_proxyport$"
+			description = "proxy port"
+			required = true
+                        skip_key = true
+                        order = -4
+                }
+                "--user" = {
+                        value = "$http_proxy_ntlm_username$"
+			description= "domain username"
+			required = true
+                        skip_key = true
+                        order = -3
+                }
+                "--password" = {
+                        value = "$http_proxy_ntlm_password$"
+			description= "domain password"
+			required = true
+                        skip_key = true
+                        order = -2
+                }
+                "--url" = {
+                        value = "$http_proxy_ntlm_url$"
+			description= "URL to check"
+			required = true
+                        skip_key = true
+                        required = false
+                        order = -1
+                }
+        }
+}
+
+########################################################
+################ CHECK RADIUS MESSAGE ##################
+########################################################
+object CheckCommand "check_radius_message" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_radius_message.sh" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$radius_message_host$"
+			order = 1
+			required = true
+                }
+                "-u" = {
+                        value = "$radius_message_user$"
+			order = 2
+			required = true
+                }
+                "-p" = {
+                        value = "$radius_message_password$"
+			order = 3
+			required = true
+                }
+                "-s" = {
+                        value = "$radius_message_secret$"
+			order = 4
+			required = true
+                }
+                "-e" = {
+                        value = "$radius_message_expect_regex$"
+			order = 5
+			description = "Default expect_regex is: Reply-Message = \"RADIUS OK\". If you want to match at the beginning (^), please note that depending on radtest version, you may get a <tab> character before the reply."
+                }
+                "-P" = {
+                        value = "$radius_message_port$"
+			order = 6
+                }
+                "-R" = {
+                        value = "$radius_message_radtest_path$"
+			order = 7
+                }
+        }
+	vars.radius_message_host = "127.0.0.1"
+	vars.radius_message_port = "1812"
+	vars.radius_message_secret = "testing123"
+}
+
+########################################################
+################ CHECK IPA REPLICATION #################
+########################################################
+object CheckCommand "check_ipa_replication" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_ipa_replication.py" ]
+
+	arguments = {
+		"-u" = {
+			value = "$ipa_replication_uri$"
+			required = true
+		}
+		"-D" = {
+			value = "$ipa_replication_bind_dn$"
+			required = true
+		}
+		"-w" = {
+			value = "$ipa_replication_bind_password$"
+			required = true
+		}
+		"--timeout" = {
+			value = "$ipa_replication_timeout$"
+		}
+	}
+}
+
+########################################################
+################ CHECK KEEPALIVED IPVS #################
+########################################################
+object CheckCommand "check_keepalived_ipvs" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_keepalived_ipvs.pl" ]
+
+	arguments = {
+		"-a" = {
+			value = "$keepalived_agent$"
+			description = "SNMP agent address"
+		}
+		"-c" = {
+			value = "$keepalived_community$"
+			description = "SNMP community string"
+		}
+		"-e" = {
+			value = "$keepalived_count$"
+			description = "CRIT, if more than count servers are down"
+		}
+		"-E" = {
+			value = "$keepalived_percent$"
+			description = "CRIT, if percentage of servers is below percent"
+		}
+		"-n" = {
+			value = "$keepalived_pattern$"
+			description = "include virtual servers matching pattern"
+		}
+		"-Q" = {
+			set_if = "$keepalived_ignore_quorum$"
+			description = "ignore quorum if not met"
+		}
+		"-q" = {
+			set_if = "$keepalived_quiet_output$"
+			description = "quiet output"
+		}
+		"-t" = {
+			set_if = "$keepalived_terse_details$"
+			description = "display terse details"
+		}
+		"-v" = {
+			value = "$keepalived_snmp_version$"
+			description = "SNMP version"
+		}
+		"-w" = {
+			value = "$keepalived_count$"
+			description = "WARN, if more than count servers are down"
+		}
+		"-W" = {
+			value = "$keepalived_percent$"
+			description = "WARN, if percentage of servers is below percent"
+		}
+		"-x" = {
+			value = "$keepalived_pattern$"
+			description = "exclude virtual servers matching pattern"
+		}
+	}
+	vars.keepalived_agent = "127.0.0.1"
+	vars.keepalived_community = "e1t2u3x4567"
+	vars.keepalived_count = 0
+}
+
+########################################################
+################ CHECK KEEPALIVED VRRP #################
+########################################################
+object CheckCommand "check_keepalived_vrrp" {
+	import "plugin-check-command"
+	command = [ PluginDir + "/check_keepalived_vrrp.pl" ]
+
+	arguments = {
+		"-a" = {
+			value = "$keepalived_agent$"
+			description = "SNMP agent address"
+		}
+		"-c" = {
+			value = "$keepalived_community$"
+			description = "SNMP community string"
+		}
+		"-b" = {
+			set_if = "$keepalived_vrrp_backup$"
+			description = "verify if VRRP instance is backup (by default compares to the instance's initial state)"
+		}
+		"-m" = {
+			set_if = "$keepalived_vrrp_master$"
+			description = "verify if VRRP instance is master (by default compares to the instance's initial state)"
+		}
+		"-n" = {
+			value = "$keepalived_name$"
+			description = "VRRP instance name"
+		}
+		"-q" = {
+			set_if = "$keepalived_quiet_output$"
+			description = "quiet output"
+		}
+		"-t" = {
+			set_if = "$keepalived_terse_details$"
+			description = "display terse details"
+		}
+		"-v" = {
+			value = "$keepalived_snmp_version$"
+			description = "SNMP version"
+		}
+		"-w" = {
+			value = "$keepalived_weight$"
+			description = "weight threshold of master instance"
+		}
+		"-x" = {
+			value = "$keepalived_router_exclude_pattern$"
+			description = "exclude virtual routers matching pattern"
+		}
+	}
+	vars.keepalived_agent = "127.0.0.1"
+	vars.keepalived_community = "e1t2u3x4567"
+}
+
+########################################################
+############# CHECK GVM SOCKET (OpenVAS) ###############
+########################################################
+object CheckCommand "check_gvm_socket" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_gvm_socket.sh" ]
+}
+
+########################################################
+################# CHECK YUM UPDATES ####################
+########################################################
+object CheckCommand "check_yum" {
+    import "plugin-check-command"
+    command = [ PluginDir + "/check_yum" ]
+    timeout = 5m
+    arguments += {
+        "--all-updates" = {
+            description = "Does not distinguish between security and non-security updates, but returns critical for any available update. This may be used if the yum security plugin is absent or you want to maintain every single package at absent or you want to maintain every single package at the latest version. You may want to use --warn-on-any-update instead of this option."
+            set_if = "$yum_all_updates$"
+        }
+        "--cache-only" = {
+            description = "Run entirely from cache and do not update the cache."
+            set_if = "$yum_cache_only$"
+        }
+        "--disableplugin" = {
+            description = "Explicitly disables a plugin when calling yum. Can take a comma separated list of plugins."
+            value = "$yum_disableplugin$"
+        }
+        "--disablerepo" = {
+            description = "Explicitly disables a repository when calling YUM. Can take a comma separated list of repositories."
+            value = "$yum_disablerepo$"
+        }
+        "--enablerepo" = {
+            description = "Explicitly enables a repository when calling YUM. Can take a comma separated list of repositories."
+            value = "$yum_enablerepo$"
+        }
+        "--installroot" = {
+            description = "Specifies another installation root directory"
+            value = "$yum_installroot$"
+        }
+        "--no-warn-on-lock" = {
+            description = "Return OK instead of WARNING when YUM is locked."
+            set_if = "$yum_no_warn_on_lock$"
+        }
+        "--no-warn-on-updates" = {
+            description = "Return OK instead of WARNING even when updates are available."
+            set_if = "$yum_no_warn_on_updates$"
+        }
+        "--timeout" = {
+            description = "Sets a timeout in seconds after which the plugin will exit (defaults to 55 seconds)."
+            value = "$yum_timeout$"
+        }
+        "--warn-on-any-update" = {
+            description = "Warns if there are any (non-security) package updates available."
+            set_if = "$yum_warn_on_any_update$"
+        }
+    }
+    vars.yum_all_updates = false
+    vars.yum_cache_only = false
+    vars.yum_no_warn_on_lock = false
+    vars.yum_no_warn_on_updates = false
+    vars.yum_warn_on_any_update = false
+}
+
+########################################################
+####################CHECK FUJITSU ILO HEALTH################
+########################################################
+object CheckCommand "check_fujitsu_server.pl" {
+        import "plugin-check-command"
+        command = [ PluginDir + "/check_fujitsu_server.pl" ]
+
+        arguments = {
+                "-H" = {
+                        value = "$fujitsuipidrac$"
+                        description = "ip address"
+                        required = true
+                }
+                "-C" = {
+                        value = "$fujitsuidraccommunity$"
+                        description = "Fujitsu Idrac Community"
+                        required = true
+                }
+        }
+        vars.fujitsuipidrac="$address$"
+}

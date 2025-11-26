@@ -1,0 +1,110 @@
+---
+- name: CLient linux 3 
+  tags: always 
+  block:
+    - name: Adjust temporary directory permissions
+      ansible.builtin.file:
+        path: "{{ setup_tmp[inventory_hostname].path }}"
+        owner: "{{ icinga_user }}"
+        group: "{{ icinga_group }}"
+      check_mode: false
+
+    - name: Get server certificate
+      ansible.builtin.command:
+        argv:
+          - /usr/sbin/icinga2
+          - pki
+          - save-cert
+          - --trustedcert
+          - "{{ setup_tmp[inventory_hostname].path }}//trusted-server.crt"
+          - --host
+          - "{{ icinga_server_ip_wf[inventory_hostname] }}"
+          - --port
+          - "{{ icinga_server_port }}"
+      register: icinga_pki_save_cert
+      changed_when: icinga_pki_save_cert.rc != 0
+      check_mode: false
+
+    - name: Include check certificate tasks
+      ansible.builtin.include_tasks: check_certificate.yml
+
+    # Should already be defined for satellite
+    - name: Set icinga_client_zone
+      ansible.builtin.set_fact:
+        icinga_client_zone: "{{ icinga_client_hostname_wf[inventory_hostname] }}"
+      when: icinga_client_zone is not defined
+    # Should already be defined for satellite
+    - name: Set icinga_parent_zone
+      ansible.builtin.set_fact:
+        icinga_parent_zone: "{{ icinga_zone_wf[inventory_hostname] }}"
+      when: icinga_parent_zone is not defined
+
+    - name: Setup icinga2 and Disable include_recursive repository.d
+      block:
+        - name: Setup icinga2 client
+          ansible.builtin.command:
+            argv:
+              - /usr/sbin/icinga2
+              - node
+              - setup
+              - --ticket
+              - "{{ ticket[inventory_hostname] }}"
+              - --cn
+              - "{{ icinga_client_hostname_wf[inventory_hostname] }}"
+              - --endpoint
+              - "{{ icinga_server_cn }},{{ icinga_server_ip_wf[inventory_hostname] }},{{ icinga_server_port }}"
+              - --zone
+              - "{{ icinga_client_zone }}"
+              - --parent_zone
+              - "{{ icinga_parent_zone }}"
+              - --trustedcert
+              - "{{ setup_tmp[inventory_hostname].path }}/trusted-server.crt"
+              - --accept-commands
+              - --accept-config
+              - --disable-confd
+              - --parent_host
+              - "{{ icinga_server_ip_wf[inventory_hostname] }},{{ icinga_server_port }}"
+          register: setup_icinga2
+          when: not is_satellite
+
+        - name: Setup icinga2 satellite
+          ansible.builtin.command:
+            argv:
+              - /usr/sbin/icinga2
+              - node
+              - setup
+              - --ticket
+              - "{{ ticket[inventory_hostname] }}"
+              - --cn
+              - "{{ icinga_client_hostname_wf[inventory_hostname] }}"
+              - --endpoint
+              - "{{ icinga_server_cn }},{{ icinga_server_ip_wf[inventory_hostname] }},{{ icinga_server_port }}"
+              - --zone
+              - "{{ icinga_client_zone_wf[inventory_hostname] }}"
+              - --parent_zone
+              - "{{ icinga_parent_zone_wf[inventory_hostname] }}"
+              - --trustedcert
+              - "{{ setup_tmp[inventory_hostname].path }}/trusted-server.crt"
+              - --accept-commands
+              - --accept-config
+              - --disable-confd
+              - --parent_host
+              - "{{ icinga_server_ip_wf[inventory_hostname] }},{{ icinga_server_port }}"
+          register: setup_icinga2
+          when: is_satellite
+
+        - name: Disable include_recursive repository.d
+          ansible.builtin.lineinfile:
+            dest: "{{ icinga_config_base_path }}/icinga2.conf"
+            state: present
+            regexp: ^#?include_recursive "repository.d"
+            line: '#include_recursive "repository.d"'
+          when: not ansible_check_mode
+          register: restart_linux_icinga2_service
+
+        - name: Record use of Restart Linux Icinga2 Service
+          ansible.builtin.set_stats:
+            data:
+              restart_linux_icinga2_service: "{{ restart_linux_icinga2_service | default({}) | combine({ inventory_hostname : true }) }}"
+            aggregate: true
+          when: setup_icinga2.changed or restart_linux_icinga2_service.changed

@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: icinga2_mom_workflow  # Ajusta para usar underscore (_) se necessário.
+  namespace: your_namespace  # Substitui pelo nome da tua organização ou utilizador.
+# NOTE: Não está a correr no awx mesmo com as tags definidas??
+dependencies:
+  - { role: mariadb, when: is_master is defined and is_master == true or is_satellite is defined and is_satellite == true }

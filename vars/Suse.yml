@@ -1,0 +1,27 @@
+---
+icinga2_packages:
+  - icinga2
+  - perl-IPC-Run
+  - freeipmi
+  - perl(Net::SNMP)
+  - perl-XML-LibXML
+  - perl-Net-SSLeay
+icinga2_plugins:
+  - monitoring-plugins-http
+  - monitoring-plugins-disk
+  - monitoring-plugins-procs
+  - monitoring-plugins-load
+  - monitoring-plugins-tcp
+  - monitoring-plugins-ping
+  - monitoring-plugins-users
+  - monitoring-plugins-swap
+  - monitoring-plugins-ntp
+  - monitoring-plugins-ssh
+  - monitoring-plugins-mailq
+  - monitoring-plugins-file_age
+  - monitoring-plugins-icmp
+  - monitoring-plugins-log
+  - monitoring-plugins-ntp_peer
+  - monitoring-plugins-time
+icinga_user: icinga
+icinga_group: icinga

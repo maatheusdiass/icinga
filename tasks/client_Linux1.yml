@@ -1,0 +1,18 @@
+---
+- name: Linux Client 1 
+  tags: always
+  block:
+    - name: Test client ->. {{ icinga_server_cn }} connection
+      ansible.builtin.wait_for:
+        host: "{{ icinga_server_ip_wf[inventory_hostname] }}"
+        port: "{{ icinga_server_port }}"
+        timeout: 2
+      changed_when: false
+      when: icinga_client_test_connections
+
+    - name: Add /etc/hosts entry on {{ inventory_hostname }}
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        regexp: ^{{ icinga_server_ip_wf[inventory_hostname] }}
+        line: "{{ icinga_server_ip_wf[inventory_hostname] }}             {{ icinga_server_cn }}"
+      when: icinga_client_add_to_hosts|bool

@@ -1,0 +1,38 @@
+---
+- name: Prepare Windows
+  tags: always
+  block:
+    - name: Set icinga_client_ip
+      when: icinga_client_ip is not defined
+      block:
+        - name: Set fact icinca client ip
+          ansible.builtin.set_fact:
+            icinga_client_ip: "{{ ansible_host }}"
+          when: ansible_host in ansible_ip_addresses
+
+        - name: Set fact icinca client ip
+          ansible.builtin.set_fact:
+            icinga_client_ip: "{{ ansible_ip_addresses[0] }}"
+    - name: Debug icinga client ip
+      ansible.builtin.debug:
+        msg: "icinga_client_ip: {{ icinga_client_ip }}"
+        verbosity: 2
+
+    - name: Create temporary directory
+      ansible.windows.win_tempfile:
+        state: directory
+      register: setup_tmp
+      check_mode: false
+
+    - name: Sets setup_tmp to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          setup_tmp: "{{ setup_tmp | default({}) | combine({ inventory_hostname : setup_tmp }) }}"
+        aggregate: true
+
+    - name: Persist remove_Win32NT_temporary_Directory to node who may not have it as its groupvars
+      ansible.builtin.set_stats:
+        data:
+          remove_Win32NT_temporary_Directory: "{{ remove_Win32NT_temporary_Directory | default({}) | combine({ inventory_hostname : true }) }}"
+        aggregate: true
+      when: setup_tmp.changed

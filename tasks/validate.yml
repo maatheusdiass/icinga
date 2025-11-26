@@ -1,0 +1,94 @@
+---
+- name: Validations
+  tags: always
+  block:
+    - name: Perform OS-specific validations
+      ansible.builtin.include_tasks: validate_{{ ansible_system }}.yml
+      tags: specific
+
+    - name: Fail if satellite node OS isn't Linux
+      ansible.builtin.fail:
+        msg: Master nodes are only supported on linux systems by this role
+      when: is_master is defined and is_master and ansible_system != "Linux"
+
+    - name: Fail if satellite node OS isn't Linux
+      ansible.builtin.fail:
+        msg: Satellite nodes are only supported on linux systems by this role
+      when: is_satellite is defined and is_satellite and ansible_system != "Linux"
+
+    - name: Fail if icinga2 is already configured and force reconfigure is false
+      ansible.builtin.fail:
+        msg: icinga2 was already configured on {{ inventory_hostname }}, use -e icinga_force_reconfigure=true
+      when: icinga_already_configured.stat.exists and not icinga_force_reconfigure|bool
+
+    - name: Fail if 'icinga_master' is not defined
+      ansible.builtin.fail:
+        msg: icinga_master must be defined
+      when: icinga_master is not defined
+
+    - name: Fail if it is both satellite and client
+      ansible.builtin.fail:
+        msg: cannot be satellite and regular icinga client at the same time
+      when: is_satellite|bool and is_client|bool
+
+    - name: Fail if it is both satellite and master
+      ansible.builtin.fail:
+        msg: cannot be satellite and master at the same time
+      when: is_satellite|bool and is_master|bool
+
+    - name: Fail if it is client and master
+      ansible.builtin.fail:
+        msg: cannot be regular icinga client and master at the same time
+      when: is_client|bool and is_master|bool
+
+    - name: Fail if none of is_client, is_satellite or is_master is true
+      ansible.builtin.fail:
+        msg: "you must set to true exactly one of the following variables: is_client, is_satellite or is_master"
+      when: not is_client|bool and not is_satellite|bool and not is_master|bool
+
+    - name: Fail if neither icinga_server nor icinga_server_ip are defined
+      ansible.builtin.fail:
+        msg: neither icinga_server nor icinga_server_ip are defined, please define one of them or both
+      when: icinga_server is not defined and icinga_server_ip is not defined and not is_master|bool
+
+    - name: Fail if 'icinga_server_cn' is not defined
+      ansible.builtin.fail:
+        msg: icinga_server_cn must be defined
+      when: icinga_server_cn is not defined
+
+    - name: Fail if 'icinga_zone' does not have the correct format
+      ansible.builtin.fail:
+        msg: icinga_zone must usually be in format zone-<name>; if you are sure you want to override set icinga_client_enforce_cluster_zones_naming=false
+      when: icinga_zone is defined and not icinga_zone.startswith('zone-') and icinga_client_enforce_cluster_zones_naming|bool
+
+    - name: Set icinga_zone based on icinga_client_prefix if not defined
+      ansible.builtin.set_fact:
+        icinga_zone: zone-{{ icinga_client_prefix }}
+      when: icinga_zone is not defined and icinga_client_prefix is defined
+
+    - name: Fail if 'icinga_zone' is not defined
+      ansible.builtin.fail:
+        msg: at least one of icinga_zone or icinga_client_prefix must be defined
+      when: icinga_zone is not defined
+
+    - name: Fail if 'icinga_client' is not defined and icinga master is mom.eurotux.com
+      ansible.builtin.fail:
+        msg: icinga_client must be defined for icinga_master mom.eurotux.com
+      when: icinga_client is not defined and icinga_master == 'mom.eurotux.com'
+
+    - name: Fail if 'icinga_client_prefix' is not defined and icinga master is mom.eurotux.com
+      ansible.builtin.fail:
+        msg: icinga_client_prefix must be defined for icinga_master mom.eurotux.com
+      when: icinga_client_prefix is not defined and icinga_master == 'mom.eurotux.com'
+
+    - name: Fail if 'my_mon_community' is not defined when icinga_client_set_snmp_community is true
+      ansible.builtin.fail:
+        msg: you must set my_mon_community since icinga_client_set_snmp_community is true for this host
+      when: icinga_client_set_snmp_community|bool and my_mon_community is not defined
+
+    - name: Fail if icinga_client_contacts_for_services has unacceptable values
+      ansible.builtin.fail:
+        msg: icinga_client_contacts_for_services value {{ item }} is not acceptable as a default for all of the host's services - non-workhours alerts should **ONLY**
+          be used for absolutely critical services and those are to be manually configured in strictly as needed in the service's 'contacts' field
+      when: item is regex("^support") and item is not regex ("support(?:10x5|0x0)")
+      loop: "{{ lookup('list', icinga_client_contacts_for_services | default([]), wantlist=True) | flatten | unique }}"

@@ -1,0 +1,108 @@
+---
+- name: Master
+  tags: always
+  block:
+    - name: Setup icinga as Master
+      ansible.builtin.command: icinga2 node setup --master
+      register: setup_icinga_master
+      changed_when: false
+      notify:
+        - restart Linux icinga2 service
+
+    - name: Copy icinga2 commands.conf-global to conf.d
+      ansible.builtin.copy:
+        src: commands.conf-global
+        dest: /etc/icinga2/conf.d/
+        owner: icinga
+        group: icinga
+        mode: "0644"
+      notify:
+        - restart Linux icinga2 service
+
+    - name: Copy icinga2 commands-notifications.conf-global to conf.d
+      ansible.builtin.copy:
+        src: commands-notifications.conf-global
+        dest: /etc/icinga2/conf.d/
+        owner: icinga
+        group: icinga
+        mode: "0644"
+      notify:
+        - restart Linux icinga2 service
+
+    - name: Create icinga2 global-templates
+      ansible.builtin.file:
+        path: /etc/icinga2/zones.d/global-templates
+        state: directory
+        owner: icinga
+        group: icinga
+
+    - name: Use commands.conf from global-templates
+      ansible.builtin.file:
+        src: /etc/icinga2/conf.d/commands.conf
+        dest: /etc/icinga2/zones.d/global-templates/commands.conf
+        state: link
+
+    - name: Use commands-notifications.conf-global from global-templates
+      ansible.builtin.file:
+        src: /etc/icinga2/conf.d/commands-notifications.conf-global
+        dest: /etc/icinga2/zones.d/global-templates/commands-notifications.conf-global
+        state: link
+
+    - name: Check if global templates zone exists (should already exist in recent icinga2 versions)
+      ansible.builtin.stat:
+        path: /etc/icinga2/zones.conf
+      register: icinga_global_templates
+
+    - name: Add global-templates zone (old icinga2 version detected)
+      ansible.builtin.blockinfile:
+        dest: "{{ icinga_config_base_path }}/zones.conf"
+        backup: true
+        insertafter: EOF
+        content: |
+          object Zone "global-templates" {
+                  global = true
+          }
+      when: not icinga_global_templates.stat.exists
+      notify: restart Linux icinga2 service
+
+    - name: Enable notifications
+      ansible.builtin.command: /usr/sbin/icinga2 feature enable notification
+      notify: restart Linux icinga2 service
+      register: enable_notifications
+      changed_when: enable_notifications.rc != 0
+
+    - name: Ensure include_recursive repository.d is disabled (should already be in recent icinga2 versions)
+      ansible.builtin.lineinfile:
+        backup: true
+        dest: "{{ icinga_config_base_path }}/icinga2.conf"
+        state: present
+        backrefs: true
+        regexp: ^#?include_recursive "repository\.d"
+        line: // include_recursive "repository.d"
+      notify: restart Linux icinga2 service
+
+    - name: Adjust api
+      ansible.builtin.lineinfile:
+        backup: true
+        dest: "{{ icinga_config_base_path }}/features-available/api.conf"
+        regexp: ^\s+accept_config =
+        state: present
+        line: "  accept_config = true"
+      notify: restart Linux icinga2 service
+
+    - name: Validate if master ansible_os_family isnt Redhat
+      ansible.builtin.fail:
+        msg: "WARNING: RedHat system not found, therefore you **must** manually copy the required icinga scripts!!!"
+      when: ansible_os_family != 'RedHat'
+      ignore_errors: true
+
+    - name: Install icinga scripts
+      ansible.builtin.package:
+        name: icinga-scripts
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: Restart icinga2 service
+      ansible.builtin.service:
+        name: icinga2
+        state: restarted

@@ -1,0 +1,40 @@
+---
+icinga_config_base_path: /etc/icinga2
+install_nagios_plugins: true
+install_nagios_plugins_etux: true
+configure_icinga2_repos: true
+icinga_force_reconfigure: false
+
+icinga_client_test_connections: true
+icinga_client_add_to_hosts: true
+icinga_client_add_to_hosts_server: false
+
+create_host_in_icinga_director: false
+icinga_master_ssh_user: root
+
+icinga_client_port: 5665
+icinga_server_port: 5665
+icinga_master_port: 5665
+icinga_master_zone: master
+
+icinga_client_ntp_address: "{{ icinga_server_ip }}"
+ntp_service_name: linux ntp_time
+icinga_client_set_snmp_community: false
+
+satellite_templates: [linux-satelite]
+icinga_client_templates: "{{ icinga_client_linux_templates | default(['linux']) }}"
+
+director_url_base: https://{{ icinga_master }}
+
+icinga_client_dont_add_client_prefix_to_hostname: false
+icinga_client_enforce_cluster_zones_naming: true
+icinga_client_keep_tempdir: false
+
+icinga_master_api_user: icinga-salt-create
+
+is_client: false
+is_satellite: false
+is_master: false
+
+icinga2_director_deploy: true
+icinga2_reconfigured_ok: false

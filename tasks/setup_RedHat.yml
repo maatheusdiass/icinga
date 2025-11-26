@@ -1,0 +1,35 @@
+---
+- name: Setup RedHat
+  tags: install
+  block:
+    - name: Install Icinga2 packages
+      ansible.builtin.yum:
+        name: "{{ item }}"
+        state: installed
+        allow_downgrade: true
+      loop: "{{ icinga2_packages }}"
+
+    - name: Install Icinga2 plugins
+      ansible.builtin.yum:
+        name: "{{ icinga2_plugins }}"
+        state: installed
+      when: install_nagios_plugins|bool
+      tags: install_nagios_plugins
+
+    - name: Install nagios_plugins_etux
+      ansible.builtin.yum:
+        name: "{{ icinga2_plugins_etux }}"
+        state: installed
+      when: install_nagios_plugins_etux|bool
+      tags: install_nagios_plugins
+
+    - name: Enable and start Icinga2
+      ansible.builtin.systemd:
+        name: icinga2
+        enabled: true
+        state: started
+
+- name: Force ansible_os_family as RedHat because of ancient ansible version
+  ansible.builtin.set_fact:
+    ansible_os_family: RedHat
+  when: ansible_os_family != 'RedHat'

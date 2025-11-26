@@ -1,0 +1,11 @@
+---
+icinga2_packages:
+  - icinga2
+  # - freeipmi
+  # - openjdk-8-jre
+icinga2_plugins:
+  - monitoring-plugins
+  - monitoring-plugins-basic
+  # - nagios-plugins-contrib
+icinga_user: nagios
+icinga_group: nagios

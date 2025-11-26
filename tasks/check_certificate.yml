@@ -1,0 +1,67 @@
+---
+- name: CheckCerfiticate
+  tags: always 
+  block:
+    - name: Extract server certificate CN
+      block:
+        - name: Set cert cn
+          ansible.builtin.set_fact:
+            cert_cn: "{{ icinga_pki_save_cert.stdout | regex_search('Subject: *CN *= *([^\\r\\n]+)', '\\1') | first | regex_replace(' +$', '') }}"
+      rescue:
+        - name: Rescue task when failed to extract server certificate CN
+          ansible.builtin.fail:
+            msg: Could not determine certificate CN for {{ icinga_server_ip }}:{{ icinga_server_port }}
+
+    - name: Extract server certificate fingerprint
+      block:
+        - name: Set cert fp
+          ansible.builtin.set_fact:
+            cert_fp: "{{ icinga_pki_save_cert.stdout | regex_search('Fingerprint: *([^\\r\\n]+)', '\\1') | first | regex_replace(' +$', '') | replace(' ', ':') }}"
+      rescue:
+        - name: Rescue task when failed to extract server certificate CN
+          ansible.builtin.fail:
+            msg: Could not determine certificate fingerprint for {{ icinga_server_ip_wf[inventory_hostname] }}:{{ icinga_server_port }}
+
+    - name: Checking server certificate validation parameters
+      block:
+        - name: Set cert_undef_param - 1
+          ansible.builtin.set_fact:
+            cert_undef_param: []
+
+        - name: Set cert_undef_param - 2
+          ansible.builtin.set_fact:
+            cert_undef_param: "{{ cert_undef_param + ['icinga_server_cn'] }}"
+          when: icinga_server_cn is not defined
+
+        - name: Set cert_undef_param - 3
+          ansible.builtin.set_fact:
+            cert_undef_param: "{{ cert_undef_param + ['icinga_server_fingerprint'] }}"
+          when: icinga_server_fingerprint is not defined
+
+        - name: Fail to check server certificate validation parameters
+          ansible.builtin.fail:
+            msg: "CN for {{ icinga_server_ip_wf[inventory_hostname] }}:{{ icinga_server_port }} is {{ cert_cn }} with fingerprint {{ cert_fp }} but the following variable(s) must be defined
+              for this host or at least one of its groups: {{ cert_undef_param | join(', ') }}. Please ensure both variables are added to your inventory variables (VALIDATE
+              THEIR VALUES before adding) and re-run this playbook for this host"
+          when: cert_undef_param|length > 0
+
+    - name: Validating server certificate
+      block:
+        - name: Set cert_errors - 1
+          ansible.builtin.set_fact:
+            cert_errors: []
+
+        - name: Comparing server CN
+          ansible.builtin.set_fact:
+            cert_errors: '{{ cert_errors + ["CN {{ cert_cn }} does not match expected icinga_server_cn {{ icinga_server_cn }}"] }}'
+          when: cert_cn != icinga_server_cn
+
+        - name: Comparing server fingerprint
+          ansible.builtin.set_fact:
+            cert_errors: '{{ cert_errors + ["fingerprint {{ cert_fp }} does not match expected icinga_server_fingerprint {{ icinga_server_fingerprint }}"] }}'
+          when: cert_fp != icinga_server_fingerprint
+
+        - name: Fail certification validation
+          ansible.builtin.fail:
+            msg: "Server certificate validation failed: {{ cert_errors | join(', ') }} - ABORTED!"
+          when: cert_errors|length > 0

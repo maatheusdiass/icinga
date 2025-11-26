@@ -1,0 +1,67 @@
+---
+- name: Prepare Linux
+  tags: always
+  block:
+    - name: Set icinga_client_ip
+      when: icinga_client_ip is not defined
+      block:
+        - name: Get icinga_server_ip
+          when: icinga_server_ip is not defined
+          block:
+            - name: Set icinga_server_ip
+              ansible.builtin.set_fact:
+                icinga_server_ip: "{{ icinga_server if (icinga_server | ipaddr('address')) else (lookup('dig', icinga_server) | ipaddr('address')) }}"
+              failed_when: icinga_server_ip is bool and not icinga_server_ip
+          rescue:
+            - name: Fail if icinga server adress could not be determined
+              ansible.builtin.fail:
+                msg: Could not determine icinga server address from {{ icinga_server }}
+        - name: Get interface with route to icinga satellite
+          ansible.builtin.shell: ip route get {{ icinga_server_ip }} | grep -m 1 dev | sed -e 's/.*dev //' | sed 's/ .*//'
+          register: net_interface
+          check_mode: false
+          changed_when: false
+
+        - name: Set ansible_interface_name
+          ansible.builtin.set_fact:
+            ansible_interface_name: ansible_{{ net_interface.stdout | replace('-', '_') }}
+          when: net_interface.stdout is defined
+
+        - name: Set icinga_client_ip
+          ansible.builtin.set_fact:
+            icinga_client_ip: "{{ hostvars[inventory_hostname][ansible_interface_name]['ipv4']['address'] }}"
+          when: ansible_interface_name is defined
+
+        - name: Set icinga_client_ip
+          ansible.builtin.set_fact:
+            icinga_client_ip: "{{ ansible_default_ipv4.address }}"
+          when: icinga_client_ip is not defined and ansible_default_ipv4.address is defined
+
+        - name: Set icinga_client_ip
+          ansible.builtin.set_fact:
+            icinga_client_ip: "{{ ansible_all_ipv4_addresses[0] }}"
+          when: icinga_client_ip is not defined
+
+    - name: Debug icinca client ip
+      ansible.builtin.debug:
+        msg: "icinga_client_ip: {{ icinga_client_ip }}"
+        verbosity: 2
+
+    - name: Create temporary directory
+      ansible.builtin.tempfile:
+        state: directory
+      register: setup_tmp
+      check_mode: false
+
+    - name: Sets setup_tmp to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          setup_tmp: "{{ setup_tmp | default({}) | combine({ inventory_hostname : setup_tmp }) }}"
+        aggregate: true
+
+    - name: Persist remove_linux_temporary_directory to alert handlers in the end 
+      ansible.builtin.set_stats:
+        data:
+          remove_linux_temporary_directory: "{{ remove_linux_temporary_directory | default({}) | combine({ inventory_hostname : true }) }}"
+        aggregate: true
+      when: setup_tmp.changed

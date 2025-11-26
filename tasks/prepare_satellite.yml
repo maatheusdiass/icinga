@@ -1,0 +1,23 @@
+---
+- name: Prepare Satellite tasks
+  tags: always
+  block:
+    - name: Set {{ icinga_master }} as the parent endpoint for this satellite
+      ansible.builtin.set_fact:
+        icinga_server: "{{ icinga_master }}"
+      when: icinga_server is not defined
+
+    - name: "Set {{ icinga_zone }} as this satellite's client zone"
+      ansible.builtin.set_fact:
+        icinga_client_zone: "{{ icinga_zone }}"
+      when: icinga_client_zone is not defined
+
+    - name: "Set {{ icinga_master_zone }} as this satellite's parent zone"
+      ansible.builtin.set_fact:
+        icinga_parent_zone: "{{ icinga_master_zone }}"
+      when: icinga_parent_zone is not defined
+
+    - name: "Set default icinga_client_ntp_address for satellite to be the first valid NTP server"
+      ansible.builtin.set_fact:
+        icinga_client_ntp_address: "{{ ntp_servers | first }}"
+      when: ntp_servers is defined and ( icinga_client_ntp_address is not defined or icinga_client_ntp_address == icinga_server_ip )

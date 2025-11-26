@@ -1,0 +1,7 @@
+Cmnd_Alias      CMD_DISKS = /usr/lib/nagios/plugins/check_mounted_disks.pl
+Cmnd_Alias      CMD_MAIL = /usr/bin/mailq
+Cmnd_Alias      COMANDOS = CMD_DISKS, CMD_MAIL
+User_Alias      ICINGAUSERS = {{ icinga_user }}
+
+Defaults:ICINGAUSERS        !requiretty
+ICINGAUSERS   ALL = NOPASSWD: COMANDOS

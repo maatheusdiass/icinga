@@ -1,0 +1,121 @@
+---
+- name: Database tasks
+  tags: always
+  block:
+    - name: Install and configure mariadb
+      ansible.builtin.import_role:
+        name: mariadb
+
+    - name: Install icinga2-ido-mysql
+      ansible.builtin.dnf:
+        name: icinga2-ido-mysql
+        state: installed
+
+    - name: Install nagios-plugins-etux-mon
+      ansible.builtin.dnf:
+        name: nagios-plugins-etux-mon
+        state: installed
+
+    - name: Check if ido-mysql file exists
+      ansible.builtin.stat:
+        path: '"{{ icinga_config_base_path }}/features-enabled/ido-mysql.conf"'
+      register: stat_ido_mysql_file
+      when: mysql_icinga_password is not defined
+
+    - name: Read password from ido-mysql
+      ansible.builtin.shell: egrep '^\s*password' {{ icinga_config_base_path }}/features-enabled/ido-mysql.conf | awk -F'=' '{print $2}' | tr -d ' "'
+      register: ido_mysql_password
+      when: mysql_icinga_password is not defined and stat_ido_mysql_file.stat.exists
+      changed_when: false
+      check_mode: false
+
+    - name: Generate password for icinga2 mysql user
+      ansible.builtin.shell: < /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-16}
+      register: out_gen_mysql_icinga2_password
+      when: (mysql_icinga_password is not defined and not stat_ido_mysql_file.stat.exists) or (ido_mysql_password.stdout is defined and ido_mysql_password.stdout
+        == '')
+      changed_when: false
+      check_mode: false
+
+    - name: Set fact for mysql_icinga_password
+      ansible.builtin.set_fact:
+        mysql_icinga_password: "{% if ido_mysql_password.stdout is defined and ido_mysql_password.stdout != '' %}{{ ido_mysql_password.stdout }}{% else %}{{ out_gen_mysql_icinga2_password.stdout
+          }}{% endif %}"
+      when: mysql_icinga_password is not defined
+
+    - name: Copy the icinga2 ido-mysql master
+      ansible.builtin.template:
+        src: ido-mysql.conf.j2
+        dest: "{{ icinga_config_base_path }}/features-enabled/ido-mysql.conf"
+      notify:
+        - restart Linux icinga2 service
+      when: is_master
+
+    - name: Copy the icinga2 ido-mysql satellite
+      ansible.builtin.template:
+        src: ido-mysql.conf.j2
+        dest: "{{ icinga_config_base_path }}/features-enabled/ido-mysql.conf"
+      register: restart_linux_icinga2_service1
+      when: is_satellite
+
+    - name: Install python2-PyMySQL
+      ansible.builtin.dnf:
+        name: python2-PyMySQL
+        state: installed
+      when: ansible_distribution_major_version < '8'
+
+    - name: Install python3-PyMySQL
+      ansible.builtin.dnf:
+        name: python3-PyMySQL
+        state: installed
+      when: ansible_distribution_major_version >= '8'
+
+    - name: Create icinga database
+      community.mysql.mysql_db:
+        name: icinga
+        state: present
+      register: create_icinga_database
+
+    - name: Create icinga mysql user
+      community.mysql.mysql_user:
+        name: icinga
+        state: present
+        password: "{{ mysql_icinga_password }}"
+        host: localhost
+        priv: icinga.*:SELECT,INSERT,UPDATE,DELETE,DROP,CREATE VIEW,INDEX,EXECUTE
+
+    - name: Import icinga database
+      community.mysql.mysql_db:
+        name: icinga
+        state: import
+        target: /usr/share/icinga2-ido-mysql/schema/mysql.sql
+      when: create_icinga_database.changed
+
+    - name: Add icinga2 features to master
+      ansible.builtin.command: icinga2 feature enable {{ item }}
+      with_items:
+        - ido-mysql
+        - command
+        - api
+      register: icinga2_feature_enable
+      changed_when: icinga2_feature_enable.stdout is match('Enabling feature')
+      notify:
+        - restart Linux icinga2 service
+      when: is_master
+
+    - name: Add icinga2 features to satellite
+      ansible.builtin.command: icinga2 feature enable {{ item }}
+      with_items:
+        - ido-mysql
+        - command
+        - api
+      register: icinga2_feature_enable
+      changed_when: icinga2_feature_enable.stdout is match('Enabling feature')
+      when: is_satellite
+
+    - name: Persist restart_linux_icinga2_service to other nodes
+      ansible.builtin.set_stats:
+        data:
+          restart_linux_icinga2_service: "{{ restart_linux_icinga2_service | default({}) | combine({inventory_hostname: true}) }}"
+        aggregate: true
+      when: is_satellite and icinga2_feature_enable.changed or restart_linux_icinga2_service1.changed

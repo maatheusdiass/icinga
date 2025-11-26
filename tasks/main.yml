@@ -1,0 +1,129 @@
+---
+- name: "Dynamic change to SSH if available"
+  ansible.builtin.include_tasks: ssh.yml
+  when: ansible_os_family == "Windows"
+  tags: always
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+  tags: include
+
+- name: Perform validations
+  ansible.builtin.include_tasks: validate.yml
+  tags: validate
+
+- name: Perform preparations
+  ansible.builtin.include_tasks: prepare.yml
+  tags: preparations
+
+- name: Install packages and plugins
+  ansible.builtin.include_tasks: setup_{{ ansible_os_family }}.yml
+  when: (install | bool)
+  tags: install
+
+- name: Setup Icinga2 master/satellite database 1
+  ansible.builtin.include_tasks: database.yml
+  tags: database
+  when: (is_master is defined and is_master) or (is_satellite is defined and is_satellite)
+
+- name: Pass variables to other nodes through set_stats
+  ansible.builtin.include_tasks: "pass_workflow_vars.yml"
+  tags: pass_vars
+
+- name: Setup Icinga2 master node
+  ansible.builtin.include_tasks: master.yml
+  when: is_master is defined and is_master
+  tags: master1
+
+- name: Validate if the machines OS is Windows
+  ansible.builtin.fail:
+    msg: This playbook can only run on Windows machines.
+  when: ansible_os_family != "Windows"
+  tags:
+    - windows_check
+
+- name: Setup client windows
+  ansible.builtin.include_tasks: client_{{ ansible_system }}.yml
+  tags: windows
+
+- name: Setup client linux 1
+  ansible.builtin.include_tasks: client_{{ ansible_system }}1.yml
+  tags: linux1
+
+- name: Setup client linux 2 in icinga_server_cn
+  ansible.builtin.include_tasks: client_{{ ansible_system }}2.yml
+  tags: linux2
+  loop: "{{ ansible_hostname_wf.keys() }}"
+  loop_control:
+    loop_var: host_name
+
+- name: Setup client linux 3
+  ansible.builtin.include_tasks: client_{{ ansible_system }}3.yml
+  tags: linux3
+
+- name: Setup Icinga2 satellite node 1 - running on "{{ inventory_hostname }}"
+  ansible.builtin.include_tasks: satellite1.yml
+  tags: satellite1
+
+- name: Setup Icinga2 satellite node 2 - running on "{{ inventory_hostname }}"
+  ansible.builtin.include_tasks: satellite2.yml
+  tags: satellite2
+  loop: "{{ ansible_hostname_wf.keys() }}"
+  loop_control:
+    loop_var: host_name
+
+- name: Setup Icinga2 client node in MOM
+  ansible.builtin.include_tasks: director_client.yml
+  tags: client1
+  loop: "{{ ansible_hostname_wf.keys() }}"
+  loop_control:
+    loop_var: host_name
+
+- name: Run handlers
+  tags: handlers1
+  # Final validations
+  block:
+    # ensure some final handlers only run when there are no failures
+    - name: Set fact icinga2_reconfigured_ok
+      ansible.builtin.set_fact:
+        icinga2_reconfigured_ok: "true"
+    - name: Flushing handlers
+      ansible.builtin.meta: flush_handlers
+    - name: Run Handlers that have not been notified in this node
+      ansible.builtin.include_tasks: handlers.yml
+
+- name: Deploy director configurations
+  tags: handlers2
+  ansible.builtin.command: icingacli director config deploy
+  register: deploy_director_task
+  changed_when: deploy_director_task.rc != 0
+  run_once: true
+  when: deploy_director_configuration[host_name] and icinga2_director_deploy_wf[host_name]
+  loop: "{{ ansible_hostname_wf.keys() }}"
+  loop_control:
+    loop_var: host_name
+
+- name: Test {{ inventory_hostname }} -> client connection
+  # DECIDED TO TAKE THIS WHEN OUT AND THE COMUNICATION IS ALWAYS TESTED , BECAUSE IT DOESNT DO ANY HARM TO TEST CONNECTION AND MAKE IT MORE SIMPLE DO STRUCTURE THE WORKFLOW AS WELL AS NOT BEING NECESSARY TO DEFINE THE ICINGA_CLIENT_TEST_CONNECTIONS VAR
+  # when: icinga_client_test_connections
+  tags: configure
+  loop: "{{ ansible_hostname_wf.keys() }}"
+  loop_control:
+    loop_var: host_name
+  throttle: 3
+  ansible.builtin.wait_for:
+    host: "{{ icinga_client_ip_wf[host_name] }}"
+    port: "{{ icinga_client_port_wf[host_name] }}"
+    timeout: 10
+  changed_when: false
+- name: Check if communication between server and client failed
+  tags: fail_communication
+  block:
+    - name: Set fact when communication between server and client goes wrong
+      ansible.builtin.set_fact:
+        icinga2_reconfigured_ok: "false"
+    - name: Fail when communication between server and client goes wrong
+      ansible.builtin.fail:
+        msg: "{{ icinga_server_cn }} can't communicate with {{ icinga_client_ip_wf[inventory_hostname] }}:{{ icinga_client_port }} - maybe the firewall on the client
+          is misconfigured, please ensure bidirectional communication is possible!"
+      notify: stop {{ ansible_os_family }} icinga2 service

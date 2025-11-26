@@ -1,0 +1,14 @@
+---
+- name : Client linux 2 
+  tags: always 
+  block:
+    - name: Include OS-specific variables
+      ansible.builtin.include_vars: "{{ ansible_os_family_wf[host_name] }}.yml"
+
+    - name: Add /etc/hosts entry on {{ inventory_hostname }}
+      ansible.builtin.lineinfile:
+        dest: /etc/hosts
+        regexp: ^{{ icinga_client_ip_wf[host_name] }}
+        line: "{{ icinga_client_ip_wf[host_name] }}             {{ ansible_nodename_wf[host_name] }} {{ icinga_client_hostname_wf[host_name] }}"
+      # delegate_to: "{{ icinga_server_cn }}"
+      when: icinga_client_add_to_hosts_server_wf[host_name]|bool and not is_satellite_wf[host_name]

@@ -1,0 +1,102 @@
+---
+- name: Setup Debian
+  tags: install
+  block:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - snmpd
+        - sudo
+        - mailutils
+        - gpg
+
+    - name: Add Icinga key
+      ansible.builtin.apt_key:
+        state: present
+        url: https://packages.icinga.com/icinga.key
+
+    - name: Install Icinga repository
+      ansible.builtin.apt_repository:
+        repo: deb https://packages.icinga.com/{{ ansible_distribution | lower }} icinga-{{ ansible_distribution_release | lower }} main
+        state: present
+        update_cache: true
+
+    - name: Install Icinga2 packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ icinga2_packages }}"
+
+    - name: Install Icinga2 plugins
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ icinga2_plugins }}"
+      when: install_nagios_plugins|bool and ansible_distribution_major_version|int >= 8
+      tags: install_nagios_plugins
+
+    - name: Install Icinga2 plugins
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - nagios-plugins-basic
+        - nagios-plugins-standard
+      when: install_nagios_plugins|bool and ansible_distribution_major_version|int < 8
+      tags: install_nagios_plugins
+
+    - name: Install etux plugins
+      ansible.builtin.copy:
+        src: files/{{ item }}
+        dest: /usr/lib/nagios/plugins/{{ item }}
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - check_cpu
+        - check_mem.pl
+        - check_mounted_disks.pl
+        - check_fs.pl
+      tags: install_nagios_plugins
+
+    - name: Configure sudoers
+      ansible.builtin.template:
+        src: icinga_sudo.j2
+        dest: /etc/sudoers.d/icinga
+        owner: root
+        group: root
+        mode: "0440"
+      tags: install_nagios_plugins
+
+    - name: Add nagios to Debian-snmp
+      ansible.builtin.user:
+        name: "{{ icinga_user }}"
+        append: true
+        groups: Debian-snmp
+
+      # TODO: unsupported on debian based distros
+      # - name: Install Eurotux release
+      # yum:
+      # name: "{{ eurotux_release }}"
+      # state: installed
+      # when: install_nagios_plugins_etux|bool
+
+      # - name: Install nagios_plugins_etux
+      # yum: name=nagios-plugins-etux state=installed
+      # when: install_nagios_plugins_etux|bool
+
+    - name: Enable and start Icinga2
+      ansible.builtin.systemd:
+        name: icinga2
+        enabled: true
+        state: started
+      when: ansible_distribution_major_version|int >= 8
+
+    - name: Enable and start Icinga2
+      ansible.builtin.sysvinit:
+        name: icinga2
+        enabled: true
+        state: started
+      when: ansible_distribution_major_version|int < 8

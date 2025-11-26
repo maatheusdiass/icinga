@@ -1,0 +1,72 @@
+---
+- name: Satellite configuration
+  tags: always
+  block:
+    - name: Set IcingaName constant
+      ansible.builtin.lineinfile:
+        path: "{{ icinga_config_base_path }}/constants.conf"
+        regexp: ^\s*const\s+IcingaName\s*=
+        line: const IcingaName = "{{ icinga_client_hostname_wf[inventory_hostname] }}"
+
+    - name: Check if global templates zone exists (should already exist in recent icinga2 versions)
+      ansible.builtin.command: grep -c '^object Zone "global-templates"' {{ icinga_config_base_path }}/zones.conf
+      register: icinga_global_templates
+      changed_when: false
+      check_mode: false
+
+    - name: Add global-templates zone , enable notifications, ensure include_recursive repository.d is disabled, adjust api
+      block:
+        - name: Add global-templates zone (old icinga2 version detected)
+          ansible.builtin.blockinfile:
+            dest: "{{ icinga_config_base_path }}/zones.conf"
+            backup: true
+            insertafter: EOF
+            content: |
+              object Zone "global-templates" {
+                      global = true
+              }
+          when: icinga_global_templates.stdout == "0"
+          register: restart_linux_icinga2_service1
+
+        - name: Enable notifications
+          ansible.builtin.command: /usr/sbin/icinga2 feature enable notification
+          register: restart_linux_icinga2_service2
+          changed_when: restart_linux_icinga2_service2.rc != 0
+
+        - name: Ensure include_recursive repository.d is disabled (should already be in recent icinga2 versions)
+          ansible.builtin.lineinfile:
+            backup: true
+            dest: "{{ icinga_config_base_path }}/icinga2.conf"
+            state: present
+            backrefs: true
+            regexp: ^#?include_recursive "repository\.d"
+            line: // include_recursive "repository.d"
+          register: restart_linux_icinga2_service3
+
+        - name: Adjust api
+          ansible.builtin.lineinfile:
+            backup: true
+            dest: "{{ icinga_config_base_path }}/features-available/api.conf"
+            regexp: ^\s+accept_config =
+            state: present
+            line: "  accept_config = true"
+          register: restart_linux_icinga2_service4
+
+        - name: Persist restart_linux_icinga2_service to alert handlers in the end
+          ansible.builtin.set_stats:
+            data:
+              restart_linux_icinga2_service: "{{ restart_linux_icinga2_service | default({}) | combine({inventory_hostname: true}) }}"
+            aggregate: true
+          when: restart_linux_icinga2_service1.changed or restart_linux_icinga2_service2.changed or restart_linux_icinga2_service3.changed or restart_linux_icinga2_service4.changed
+
+    - name: Warning when ansible os family is different from RedHat
+      ansible.builtin.fail:
+        msg: "WARNING: RedHat system not found, therefore you **must** manually copy the required icinga scripts!!!"
+      when: ansible_os_family != 'RedHat'
+      ignore_errors: true
+
+    - name: Install icinga scripts
+      ansible.builtin.package:
+        name: icinga-scripts
+        state: present
+      when: ansible_os_family == 'RedHat'

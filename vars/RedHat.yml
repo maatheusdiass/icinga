@@ -1,0 +1,23 @@
+---
+icinga2_packages:
+  - icinga2
+  - perl(Net::SNMP)
+  - perl-XML-LibXML
+  - perl-Net-SSLeay
+icinga2_plugins:
+  - nagios-plugins-http
+  - nagios-plugins-disk
+  - nagios-plugins-procs
+  - nagios-plugins-load
+  - nagios-plugins-tcp
+  - nagios-plugins-ping
+  - nagios-plugins-users
+  - nagios-plugins-swap
+  - nagios-plugins-ntp
+  - nagios-plugins-perl
+  - nagios-plugins-ssh
+  - nagios-plugins-mailq
+icinga2_plugins_etux:
+  - nagios-plugins-etux
+icinga_user: icinga
+icinga_group: icinga

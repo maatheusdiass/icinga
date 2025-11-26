@@ -1,0 +1,204 @@
+---
+- name: Passing vars to persist through workflow
+  tags: always
+  block:
+    - name: Set my_mon_community_wf so master node can use it
+      ansible.builtin.set_stats:
+        data:
+          my_mon_community_wf: "{{ my_mon_community_wf | default({}) | combine({inventory_hostname: my_mon_community}) }}"
+        aggregate: true
+      when: my_mon_community is defined
+
+    - name: Set icinga_client_set_snmp_community_wf so master node can use it
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_set_snmp_community_wf: "{{ icinga_client_set_snmp_community_wf | default({}) | combine({inventory_hostname: icinga_client_set_snmp_community})
+            }}"
+        aggregate: true
+      when: icinga_client_set_snmp_community is defined
+
+    - name: Set icinga_server_ip to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_server_ip_wf: "{{ icinga_server_ip_wf | default({}) | combine({inventory_hostname: icinga_server_ip}) }}"
+        aggregate: true
+
+    - name: Pass ansible_os_family through workflow
+      ansible.builtin.set_stats:
+        data:
+          ansible_os_family_wf: "{{ ansible_os_family_wf | default({}) | combine({inventory_hostname: ansible_os_family}) }}"
+        aggregate: true
+
+    - name: Set icinga_client_templates_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_templates_wf: "{{ icinga_client_templates_wf | default({}) | combine({inventory_hostname: icinga_client_templates}) }}"
+        aggregate: true
+
+    - name: Set icinga_client_contacts_for_host_wf
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_contacts_for_host_wf: "{{ icinga_client_contacts_for_host_wf | default({}) | combine({inventory_hostname: icinga_client_contacts_for_host})
+            }}"
+        aggregate: true
+      when: icinga_client_contacts_for_host is defined
+
+    - name: Set icinga_client_contacts_for_services_wf
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_contacts_for_services_wf: "{{ icinga_client_contacts_for_services_wf | default({}) | combine({inventory_hostname: icinga_client_contacts_for_services})
+            }}"
+        aggregate: true
+      when: icinga_client_contacts_for_services is defined
+
+    - name: Set icinga_client_host_vars_wf
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_host_vars_wf: "{{ icinga_client_host_vars_wf | default({}) | combine({inventory_hostname: icinga_client_host_vars}) }}"
+        aggregate: true
+      when: icinga_client_host_vars is defined
+
+    - name: Set icinga_client_ntp_address_wf
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_ntp_address_wf: "{{ icinga_client_ntp_address_wf | default({}) | combine({inventory_hostname: icinga_client_ntp_address}) }}"
+        aggregate: true
+      when: icinga_client_ntp_address is defined
+
+    - name: Set icinga_client_services_vars_wf
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_services_vars_wf: "{{ icinga_client_services_vars_wf | default({}) | combine({inventory_hostname: icinga_client_services_vars}) }}"
+        aggregate: true
+      when: icinga_client_services_vars is defined
+
+    - name: Set ansible_hostname_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          ansible_hostname_wf: "{{ ansible_hostname_wf | default({}) | combine({inventory_hostname: ansible_hostname}) }}"
+        aggregate: true
+
+    - name: Set icinga_client_port to persist through workflo to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_port_wf: "{{ icinga_client_port_wf | default({}) | combine({inventory_hostname: icinga_client_port}) }}"
+        aggregate: true
+      when: icinga_client_port is defined
+
+    - name: Set icinga_client_ip_wf to persist through workflo to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_ip_wf: "{{ icinga_client_ip_wf | default({}) | combine({inventory_hostname: icinga_client_ip}) }}"
+        aggregate: true
+      when: icinga_client_ip is defined
+
+    - name: Persist icinga_client_wf to node who may not have it as its groupvars
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_wf: "{{ icinga_client_wf | default({}) | combine({inventory_hostname: icinga_client}) }}"
+        aggregate: true
+      when: icinga_client is defined
+
+    - name: Set icinga_zone_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_zone_wf: "{{ icinga_zone_wf | default({}) | combine({inventory_hostname: icinga_zone}) }}"
+        aggregate: true
+      when: icinga_zone is defined
+
+    - name: Set icinga_client_zone_wf to persist though workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_zone_wf: "{{ icinga_client_zone_wf | default({}) | combine({inventory_hostname: icinga_client_zone}) }}"
+        aggregate: true
+      when: icinga_client_zone is defined
+
+    - name: Set icinga_parent_zone to persist though workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_parent_zone_wf: "{{ icinga_parent_zone_wf | default({}) | combine({inventory_hostname: icinga_master_zone}) }}"
+        aggregate: true
+      when: icinga_master_zone is defined
+
+    - name: Set is_satellite_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          is_satellite_wf: "{{ is_satellite_wf | default({}) | combine({inventory_hostname: is_satellite}) }}"
+        aggregate: true
+      when: is_satellite is defined
+
+    - name: Set ansible_nodename_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          ansible_nodename_wf: "{{ ansible_nodename_wf | default({}) | combine({inventory_hostname: ansible_nodename}) }}"
+        aggregate: true
+
+    - name: Set icinga_client_hostname_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_hostname_wf: "{{ icinga_client_hostname_wf | default({}) | combine({inventory_hostname: icinga_client_hostname}) }}"
+        aggregate: true
+      when: icinga_client_hostname is defined
+
+    - name: Set create_host_in_icinga_director_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          create_host_in_icinga_director_wf: "{{ create_host_in_icinga_director_wf | default({}) | combine({inventory_hostname: create_host_in_icinga_director}) }}"
+        aggregate: true
+      when: create_host_in_icinga_director is defined
+
+    - name: Set deploy_director_configuration to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          deploy_director_configuration: "{{ deploy_director_configuration | default({}) | combine({inventory_hostname: false}) }}"
+        aggregate: true
+
+    - name: Set icinga_client_displayname_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_displayname_wf: "{{ icinga_client_displayname_wf | default({}) | combine({inventory_hostname: icinga_client_displayname}) }}"
+        aggregate: true
+      when: icinga_client_displayname is defined
+
+    - name: Set icinga2_director_deploy_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga2_director_deploy_wf: "{{ icinga2_director_deploy_wf | default({}) | combine({inventory_hostname: icinga2_director_deploy}) }}"
+        aggregate: true
+      when: icinga2_director_deploy is defined
+
+    - name: Set icinga_client_prefix_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_prefix_wf: "{{ icinga_client_prefix_wf | default({}) | combine({inventory_hostname: icinga_client_prefix}) }}"
+        aggregate: true
+      when: icinga_client_prefix is defined
+
+    - name: Set icinga_client_add_to_hosts_server_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_client_add_to_hosts_server_wf: "{{ icinga_client_add_to_hosts_server_wf | default({}) | combine({inventory_hostname: icinga_client_add_to_hosts_server})
+            }}"
+        aggregate: true
+      when: icinga_client_add_to_hosts_server is defined
+
+    - name: Set director_hostgroup_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          director_hostgroup_wf: "{{ director_hostgroup_wf | default({}) | combine({inventory_hostname: director_hostgroup}) }}"
+        aggregate: true
+      when: director_hostgroup is defined
+
+    - name: Set director_servicegroup_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          director_servicegroup_wf: "{{ director_servicegroup_wf | default({}) | combine({inventory_hostname: director_servicegroup}) }}"
+        aggregate: true
+      when: director_servicegroup is defined
+
+    - name: Set icinga_bin_path_wf to persist through workflow
+      ansible.builtin.set_stats:
+        data:
+          icinga_bin_path_wf: "{{ icinga_bin_path_wf | default({}) | combine({inventory_hostname: icinga_bin_path}) }}"
+        aggregate: true
+      when: icinga_bin_path is defined

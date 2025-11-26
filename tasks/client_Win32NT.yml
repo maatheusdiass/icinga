@@ -1,0 +1,63 @@
+---
+- name: Block for windows code
+  tags: windows
+  block:
+    - name: Test client -> {{ icinga_server_cn }} connection
+      ansible.windows.win_wait_for:
+        host: "{{ icinga_server_ip_wf[inventory_hostname] }}"
+        port: "{{ icinga_server_port }}"
+        timeout: 2
+      changed_when: false
+      when: icinga_client_test_connections
+
+    - name: Add "{{ icinga_server_cn }}" to hosts
+      community.windows.win_hosts:
+        state: present
+        canonical_name: "{{ icinga_server_cn }}"
+        ip_address: "{{ icinga_server_ip_wf[inventory_hostname] }}"
+      when: icinga_client_add_to_hosts_server|bool
+
+    - name: Get server certificate
+      ansible.windows.win_command: icinga2.exe pki save-cert --trustedcert "{{ setup_tmp[inventory_hostname].path }}\trusted-server.crt" --host {{ icinga_server_ip_wf[inventory_hostname] }} --port {{ icinga_server_port }}
+      args:
+        chdir: "{{ icinga_bin_path_wf[inventory_hostname] }}"
+      register: icinga_pki_save_cert
+      check_mode: false
+
+    - name: Include check certificate tasks
+      ansible.builtin.include_tasks: check_certificate.yml
+    - name: Setup icinga2
+      ansible.windows.win_command: icinga2.exe node setup --ticket "{{ ticket[inventory_hostname] }}" --cn "{{ icinga_client_hostname_wf[inventory_hostname] }}" --endpoint "{{ icinga_server_cn }},{{ icinga_server_ip_wf[inventory_hostname]
+        }},{{ icinga_server_port }}" --zone "{{ icinga_client_hostname_wf[inventory_hostname] }}" --parent_zone "{{ icinga_zone_wf[inventory_hostname] }}" --trustedcert "{{ setup_tmp[inventory_hostname].path }}\trusted-server.crt"
+        --accept-commands --accept-config --disable-confd --parent_host {{ icinga_server_ip_wf[inventory_hostname] }},{{ icinga_server_port }}
+      args:
+        chdir: "{{ icinga_bin_path_wf[inventory_hostname] }}"
+      register: restart_win32nt_icinga2_service1
+
+    - name: Persist restart_Win32NT_icinga2_service to alert handlers in the end 
+      ansible.builtin.set_stats:
+        data:
+          restart_Win32NT_icinga2_service: "{{ restart_Win32NT_icinga2_service | default({}) | combine({ inventory_hostname : true }) }}"
+        aggregate: true
+      when: restart_win32nt_icinga2_service1.changed
+
+    - name: Set icinga2 service parameters for windows-domain-controller
+      ansible.windows.win_service:
+        name: icinga2
+        username: NT AUTHORITY\SYSTEM
+      when: '"windows-domain-controller" in icinga_client_templates_wf[inventory_hostname]'
+
+    - name: Set icinga2 service parameters
+      ansible.windows.win_service:
+        name: icinga2
+        username: NetworkService
+      when: '"windows-domain-controller" not in icinga_client_templates_wf[inventory_hostname]'
+
+    - name: Enable and configure snmp-service
+      ansible.builtin.import_role:
+        name: snmp
+      ignore_errors: true
+      vars:
+        snmp_my_mon_host: "{{ icinga_server_ip_wf[inventory_hostname] }}"
+      tags: snmp
+      when: my_mon_community is defined

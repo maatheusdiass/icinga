@@ -1,0 +1,50 @@
+---
+- name: Check if SSH is available on the host
+  ansible.builtin.wait_for:
+    port: 22
+    host: "{{ (ansible_ssh_host | default(ansible_host)) | default(inventory_hostname) }}"
+    search_regex: OpenSSH
+    timeout: 3
+  vars:
+    ansible_connection: local
+  register: ssh_check
+  when: ansible_connection != 'ssh'
+  ignore_errors: true
+
+- name: Store original connection variables
+  ansible.builtin.set_fact:
+    original_ansible_connection: "{{ ansible_connection | default('winrm') }}"
+    original_ansible_port: "{{ ansible_port | default(5986) }}"
+    original_ansible_shell_type: "{{ ansible_shell_type | default(omit) }}"
+    original_shell_type: "{{ shell_type | default(omit) }}"
+
+- name: Change to SSH connection
+  when: ssh_check.elapsed is defined and ssh_check.elapsed < 3
+  block:
+    - name: Set connection to SSH if available
+      ansible.builtin.set_fact:
+        ansible_connection: "ssh"
+        ansible_port: 22
+        ansible_shell_type: cmd
+        shell_type: cmd
+
+    - name: Gather facts with updated connection method
+      ansible.builtin.setup:
+      register: setup_result
+      failed_when: setup_result is failed
+      ignore_errors: true
+
+- name: Revert to original connection
+  when: (setup_result.skipped is defined and setup_result.skipped) or (setup_result is failed)
+  block:
+    - name: Revert to original connection if gathering facts failed
+      ansible.builtin.set_fact:
+        ansible_connection: "{{ original_ansible_connection }}"
+        ansible_port: "{{ original_ansible_port }}"
+        ansible_shell_type: "{{ original_ansible_shell_type }}"
+        shell_type: "{{ original_shell_type }}"
+
+    - name: Gather facts with original connection method
+      ansible.builtin.setup:
+      register: setup_result
+      failed_when: setup_result is failed

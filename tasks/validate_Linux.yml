@@ -1,0 +1,5 @@
+---
+- name: Check if icinga2 was already configured
+  ansible.builtin.stat:
+    path: /etc/icinga2/zones.conf.orig
+  register: icinga_already_configured

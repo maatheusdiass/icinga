@@ -1,0 +1,94 @@
+---
+- name: Setup Windows
+  tags: install
+  block:
+    - name: Set icinga_setup_url
+      ansible.builtin.set_fact:
+        icinga_setup_url: "{{ icinga_setup_base_url | default(icinga_setup_default_base_url) }}/Icinga2-v{{ icinga_setup_version | default(icinga_setup_default_version)
+          }}-{{ 'x86_64' if ansible_architecture.startswith('64') else 'x86' }}.msi"
+      when: icinga_setup_url is not defined
+
+    - name: Get icinga setup
+      block:
+        - name: Direct download
+          ansible.windows.win_get_url:
+            url: "{{ icinga_setup_url }}"
+            dest: "{{ setup_tmp.path }}"
+      rescue:
+       - name: Local download
+         get_url:
+           url: "{{ icinga_setup_url }}"
+           dest: "/tmp/{{ icinga_setup_url | basename}}_{{ inventory_hostname }}"
+         delegate_to: localhost
+
+       - name: Copy file
+         win_copy:
+           src: "/tmp/{{ icinga_setup_url | basename}}_{{ inventory_hostname }}"
+           dest:  "{{ setup_tmp.path }}/{{ icinga_setup_url | basename }}"
+
+       - name: Cleanup local file
+         file:
+           state: absent
+           path: "/tmp/{{ icinga_setup_url | basename}}_{{ inventory_hostname }}"
+         delegate_to: localhost
+
+    - name: Install icinga2
+      ansible.windows.win_package:
+        path: "{{ setup_tmp.path }}\\{{ icinga_setup_url | basename }}"
+        state: present
+        arguments: /qn /norestart
+      when: not ansible_check_mode
+
+    - name: Install nagios plugins
+      when: not local_install_nagios_plugins|bool
+      tags: install_nagios_plugins
+
+      block:
+        - name: Set icinga_setup_scripts_exe_url
+          ansible.builtin.set_fact:
+            icinga_scripts_exe_url: "{{ icinga_setup_default_scripts_exe_url }}"
+          when: icinga_setup_scripts_exe_url is not defined
+
+        - name: Get Eurotux windows plugins for windows
+          block:
+            - name: Try direct download
+              ansible.windows.win_get_url:
+                url: "{{ icinga_scripts_exe_url }}"
+                dest: "{{ setup_tmp.path }}"
+
+          rescue:
+          - name: Local download
+            get_url:
+              url: "{{ icinga_scripts_exe_url }}"
+              dest: "/tmp/{{ icinga_scripts_exe_url | basename}}_{{ inventory_hostname }}"
+            delegate_to: localhost
+
+          - name: Copy file
+            win_copy:
+              src: "/tmp/{{ icinga_scripts_exe_url | basename}}_{{ inventory_hostname }}"
+              dest:  "{{ setup_tmp.path }}/{{ icinga_scripts_exe_url | basename }}"
+
+          - name: Cleanup local file
+            file:
+              state: absent
+              path: "/tmp/{{ icinga_scripts_exe_url | basename}}_{{ inventory_hostname }}"
+            delegate_to: localhost
+
+        - name: Install Eurotux windows plugins for windows
+          ansible.windows.win_command: "{{ setup_tmp.path }}\\{{ icinga_scripts_exe_url | basename }} /S"
+          args:
+            chdir: "{{ setup_tmp.path }}"
+
+    - name: Locally install nagios plugins
+      when: local_install_nagios_plugins|bool
+      tags: install_nagios_plugins
+      block:
+        - name: Copying icinga-client-push dir into {{ icinga_config_base_path }}/scripts/
+          ansible.windows.win_copy:
+            src: icinga2-client-push/checkplugins/
+            dest: "{{ icinga_bin_path }}/"
+
+        - name: Copying ntp check to ProgramData/sbin
+          ansible.windows.win_copy:
+            src: icinga2-client-push/checkplugins/
+            dest: "{{ icinga_config_base_path }}/scripts/"

@@ -1,0 +1,210 @@
+/* Command objects */
+
+
+object NotificationCommand "pager-host-notification-director" {
+    import "plugin-notification-command"
+    command = [ "/etc/icinga2/conf.d/scripts/rocketchat-host-notification.sh" ]
+    arguments += {
+        "-b" = "$notification.author$"
+        "-c" = "$notification.comment$"
+        "-l" = {
+            required = true
+            value = "$host.name$"
+        }
+        "-n" = {
+            required = true
+            value = "$host.display_name$"
+        }
+        "-o" = {
+            required = true
+            value = "$host.output$"
+        }
+        "-s" = {
+            required = true
+            value = "$host.state$"
+        }
+        "-t" = {
+            required = true
+            value = "$notification.type$"
+        }
+        "-r" =  {
+	    required = true
+            value = "$user.pager$"
+        }
+        "-g" = NodeName
+        "-v" = "$notification_logtosyslog$"
+    }
+}
+
+object NotificationCommand "pager-service-notification-director" {
+    import "plugin-notification-command"
+    command = [ "/etc/icinga2/conf.d/scripts/rocketchat-service-notification.sh" ]
+    arguments += {
+        "-b" = "$notification.author$"
+        "-c" = "$notification.comment$"
+        "-t" = {
+            required = true
+            value = "$notification.type$"
+        }
+        "-e" = {
+	    required = true
+            value = "$service.output$"
+        }
+        "-n" = {
+            required = true
+            value = "$host.display_name$"
+        }
+        "-i" = {
+            required = true
+            value = "$service.state$"
+        }
+        "-u" = { 
+            required = true
+            value = "$service.display_name$"
+        }
+        "-r" = {
+	    required = true
+            value = "$user.pager$"
+        }
+        "-g" = NodeName
+        "-v" = "$notification_logtosyslog$"
+    }
+}
+
+object NotificationCommand "mail-host-notification-director" {
+    import "plugin-notification-command"
+    command = [ "/etc/icinga2/conf.d/scripts/mail-host-notification-director.sh" ]
+    arguments += {
+        "-4" = {
+            required = true
+            value = "$address$"
+        }
+        "-6" = "$address6$"
+        "-b" = "$notification.author$"
+        "-c" = "$notification.comment$"
+        "-d" = {
+            required = true
+            value = "$icinga.long_date_time$"
+        }
+        "-f" = "$notification_from$"
+        "-i" = "$icingaweb2url$"
+        "-l" = {
+            required = true
+            value = "$host.name$"
+        }
+        "-n" = {
+            required = true
+            value = "$host.display_name$"
+        }
+        "-o" = {
+            required = true
+            value = "$host.output$"
+        }
+        "-r" = {
+            required = true
+            value = "$user.email$"
+        }
+        "-s" = {
+            required = true
+            value = "$host.state$"
+        }
+        "-t" = {
+            required = true
+            value = "$notification.type$"
+        }
+        "-v" = "$notification_logtosyslog$"
+    }
+}
+
+object NotificationCommand "mail-service-notification-director" {
+    import "plugin-notification-command"
+    command = [ "/etc/icinga2/conf.d/scripts/mail-service-notification-director.sh" ]
+    arguments += {
+        "-4" = {
+            required = true
+            value = "$address$"
+        }
+        "-6" = "$address6$"
+        "-b" = "$notification.author$"
+        "-c" = "$notification.comment$"
+        "-d" = {
+            required = true
+            value = "$icinga.long_date_time$"
+        }
+        "-e" = {
+            required = true
+            value = "$service.name$"
+        }
+        "-f" = "$notification_from$"
+        "-i" = "$icingaweb2url$"
+        "-l" = {
+            required = true
+            value = "$host.name$"
+        }
+        "-n" = {
+            required = true
+            value = "$host.display_name$"
+        }
+        "-o" = {
+            required = true
+            value = "$service.output$"
+        }
+        "-r" = {
+            required = true
+            value = "$user.email$"
+        }
+        "-s" = {
+            required = true
+            value = "$service.state$"
+        }
+        "-t" = "$notification.type$"
+        "-u" = {
+            required = true
+            value = "$service.display_name$"
+        }
+        "-v" = "$notification_logtosyslog$"
+    }
+}
+
+object NotificationCommand "mail-pretty-notification" {
+  import "plugin-notification-command"
+
+  command = [ SysconfDir + "/icinga2/conf.d/scripts/mail-pretty-notification.sh" ]
+
+  arguments = {
+    "-f" = {
+      value = "$mail_pretty_notification_from$"
+      required = true
+      order = 1
+    }
+    "-s" = {
+      value = "$mail_pretty_notification_subject$"
+      required = true
+      order = 2
+    }
+    "-c" = {
+      value = "$mail_pretty_notification_cc$"
+      required = false
+      order = 3
+    }
+    "-b" = {
+      value = "$mail_pretty_notification_bcc$"
+      required = false
+      order = 4
+    }
+    "-t" = {
+      value = "$mail_pretty_notification_to$"
+      required = true
+      order = 5
+    }
+    "message" = {
+      value = "$mail_pretty_notification_message$"
+      description = "Message body with escapable characters including newlines as \\n"
+      skip_key = true
+      required = true
+      order = 6
+    }
+  }
+}
+
+// END director notification commands
